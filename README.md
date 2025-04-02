@@ -151,7 +151,7 @@ The attribute `mapping` has the default value `screen`, which means the backgrou
 
 Next, we provide a simple version of the main loop illustrating a possible usage of (some of) these classes together.
 
-```c++
+```cpp
 \\ [1] Parser and load scene file
 \\ [2] Instantiate the Camera, Film, and Background objects.
 \\ [3] Enter the ray tracing main loop, because parser has found the `world_end` tag.
