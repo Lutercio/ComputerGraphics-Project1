@@ -4,11 +4,21 @@
 
 In this programming project you will begin writing your own ray tracer.
 
-We've learned from the lessons so far that a basic ray tracing algorithm works by shooting **rays** through **pixels** of an image into a **scene**; every time a ray hits something in the scene, the algorithm triggers some form of **shader** (aka _reflectance model_) to determine the color of that pixel. By **shader** we mean another class or procedure, **physically based** or otherwise, that might shoot other rays, stop on the first hit (i.e. a _ray casting_), compute the contribution of the **lights** in the scene, for example, to determine and return a [_rgb_ color](https://en.wikipedia.org/wiki/RGB_color_model) (see figure below, from Chapter 4 of _"Fundamentals of Computer Graphics"_, 3rd ed., Shirley and Marschner).
+We've learned from the lessons so far that a basic ray tracing algorithm works
+by shooting **rays** through **pixels** of an image into a **scene**; every
+time a ray hits something in the scene, the algorithm triggers some form of
+**shader** (aka _reflectance model_) to determine the color of that pixel. By
+**shader** we mean another class or procedure, **physically based** or
+otherwise, that might shoot other rays, stop on the first hit (i.e. a _ray
+casting_), compute the contribution of the **lights** in the scene, for
+example, to determine and return a [_rgb_
+color](https://en.wikipedia.org/wiki/RGB_color_model).
 
 <img src="./pics/viewraytri.png" width="350">
+Source: Chapter 4 of _"Fundamentals of Computer Graphics"_, 3rd ed., Shirley and Marschner).
 
-<img src="./pics/Ray_trace_diagram.svg" width="350">
+<img src="./pics/Ray_trace_diagram.png" width="350">
+Source: Wikipedia on [Ray Tracing](https://commons.wikimedia.org/wiki/File:Ray_trace_diagram.svg).
 
 At this point, several of the ray tracing components mentioned above are to be considered **black boxes**. For now, our major concern is to understand the _"big picture"_ and lay down the foundations of our ray tracing, which, in turn, will be extended and experimented with along the next projects.
 
