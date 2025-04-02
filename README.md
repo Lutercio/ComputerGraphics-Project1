@@ -8,6 +8,8 @@ We've learned from the lessons so far that a basic ray tracing algorithm works b
 
 <img src="./pics/viewraytri.png" width="350">
 
+<img src="./pics/Ray_trace_diagram.svg" width="350">
+
 At this point, several of the ray tracing components mentioned above are to be considered **black boxes**. For now, our major concern is to understand the _"big picture"_ and lay down the foundations of our ray tracing, which, in turn, will be extended and experimented with along the next projects.
 
 ## Requirements
@@ -15,7 +17,7 @@ At this point, several of the ray tracing components mentioned above are to be c
 We'll start with the basic elements of a ray tracer, namely
 
 1. A class `Film` that stores pixels values as an **image color buffer** (a matrix). This allows the ray tracer to save the color buffer to an image file in PPM or PNG format. The class is named `Film` because it plays a role similar to a film in an analog camera, or sensor in a modern digital camera.
-2. A class `Background` that is responsible for returning a color each time the primary ray misses any object in the scene (i.e. hits nothing). In this project, this class will receive a _pixel coordinate_ $`(i,j)`$ (usually normalized) and return the corresponding background color.
+2. A class `Background` that is responsible for returning a color each time the primary ray misses any object in the scene (i.e. hits nothing). In this project, this class will receive a _pixel coordinate_ $(i,j)$ (usually normalized) and return the corresponding background color.
 3. A set of classes to handle the math operations on vectors and matrices. In this case you might either implement your own library (`Vector3`, `Point3`, `Mat3x3`, etc.) based on the one provided in [_"Ray Tracing in One Weekend"_](https://github.com/petershirley/raytracinginoneweekend/releases/), or adopt other math libraries such as [_OpenGL Mathematics_](https://glm.g-truc.net/0.9.9/index.html), or [_cyCodeBase_](http://www.cemyuksel.com/cyCodeBase/code.html).
 4. The `API class` which is a [singleton](https://en.wikipedia.org/wiki/Singleton_pattern) that can be coded as a static class that will instantiate and keep track of all object that we will need to run the ray tracer. In this project, for instance, this class should hold an instance of `Background`, and `Film`, and provide a method `render()` in which resides the main loop described next. The API suggested here follows the [**retained mode**](https://en.wikipedia.org/wiki/Retained_mode) API design, which implies that the API is responsible for storing and managing the scene information and direct calls to any of the API functions does not directly cause actual rendering.
 5. The _main loop_ of the ray tracing algorithm, which should traverse the image pixels and shoot rays into the scene. At this stage, the main loop only traverses the image and samples colors from the `Background` object. (no rays are shot just yet)
@@ -84,7 +86,7 @@ rgb Background::sample( float i, float j );
 rgb Background::sample( const Point2f& raster );
 ```
 
-where `rgb` means a color in the three-dimensional RBG space, and `i` and `j` are values in $`[0,1]`$ corresponding to the _normalized_ location of the pixel `(i,j)` in the color buffer.
+where `rgb` means a color in the three-dimensional RBG space, and `i` and `j` are values in $[0,1]$ corresponding to the _normalized_ location of the pixel `(i,j)` in the color buffer.
 
 Here is another example, this time asking for a background generated through interpolation.
 
@@ -104,7 +106,7 @@ This scene would generate the image below:
 <!--  ![background_result](pics/saida.png =400x) -->
  <img src="./pics/interpolated_bkg.png" width="350">
 
-Note that the RGB colors components are specified as integers in the range $`[0,255]`$. However, they also may be specified as a real number in the range $`[0.0,1.0]`$. You program should handle both representations.
+Note that the RGB colors components are specified as integers in the range $[0,255]$. However, they also may be specified as a real number in the range $[0.0,1.0]$. You program should handle both representations.
 
 The attribute `mapping` has the default value `screen`, which means the background is mapped to the pixels on the screen window. An alternative mapping is `spherical`, in which the background is mapped ("glued") to a sphere, and the rays are shoot from the center of this sphere: This is called [_spherical reflection map_](https://en.wikipedia.org/wiki/Sphere_mapping). This type of mapping is particularly useful when you need to create a realistic surrounding for your scene based on a spherical image, which will make more sense when your ray tracer starts shooting rays, in the next project.
 
