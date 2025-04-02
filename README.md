@@ -15,9 +15,11 @@ example, to determine and return a [_rgb_
 color](https://en.wikipedia.org/wiki/RGB_color_model).
 
 <img src="./pics/viewraytri.png" width="350">
+
 Source: Chapter 4 of _"Fundamentals of Computer Graphics"_, 3rd ed., Shirley and Marschner).
 
 <img src="./pics/Ray_trace_diagram.png" width="350">
+
 Source: Wikipedia on [Ray Tracing](https://commons.wikimedia.org/wiki/File:Ray_trace_diagram.svg).
 
 At this point, several of the ray tracing components mentioned above are to be considered **black boxes**. For now, our major concern is to understand the _"big picture"_ and lay down the foundations of our ray tracing, which, in turn, will be extended and experimented with along the next projects.
