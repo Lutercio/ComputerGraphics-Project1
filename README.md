@@ -99,7 +99,7 @@ Here is an example scene file:
     <camera type="orthographic" />
     <film type="image" x_res="200" y_res="100" filename="simple_bkg.ppm" img_type="ppm" />
     <world_begin/>
-        <background type="colors" color="153 204 255"/>
+        <background type="single_color" color="153 204 255"/>
     <world_end/>
 </RT3>
 ```
@@ -135,7 +135,7 @@ Here is another example, this time asking for a background generated through int
     <film type="image" x_res="800" y_res="600" filename="interpolated_bkg.png" img_type="png" />
     <world_begin/>
         <!-- This defines an interpolated background -->
-        <background type="colors" mapping="screen" bl="0 0 51" tl="0 255 51" tr="255 255 51" br="255 0 51" />
+        <background type="4_colors" bl="0 0 51" tl="0 255 51" tr="255 255 51" br="255 0 51" />
     <world_end/>
 </RT3>
 ```
