@@ -28,12 +28,39 @@ At this point, several of the ray tracing components mentioned above are to be c
 
 We'll start with the basic elements of a ray tracer, namely
 
-1. A class `Film` that stores pixels values as an **image color buffer** (a matrix). This allows the ray tracer to save the color buffer to an image file in PPM or PNG format. The class is named `Film` because it plays a role similar to a film in an analog camera, or sensor in a modern digital camera.
-2. A class `Background` that is responsible for returning a color each time the primary ray misses any object in the scene (i.e. hits nothing). In this project, this class will receive a _pixel coordinate_ $(i,j)$ (usually normalized) and return the corresponding background color.
-3. A set of classes to handle the math operations on vectors and matrices. In this case you might either implement your own library (`Vector3`, `Point3`, `Mat3x3`, etc.) based on the one provided in [_"Ray Tracing in One Weekend"_](https://github.com/petershirley/raytracinginoneweekend/releases/), or adopt other math libraries such as [_OpenGL Mathematics_](https://glm.g-truc.net/0.9.9/index.html), or [_cyCodeBase_](http://www.cemyuksel.com/cyCodeBase/code.html).
-4. The `API class` which is a [singleton](https://en.wikipedia.org/wiki/Singleton_pattern) that can be coded as a static class that will instantiate and keep track of all object that we will need to run the ray tracer. In this project, for instance, this class should hold an instance of `Background`, and `Film`, and provide a method `render()` in which resides the main loop described next. The API suggested here follows the [**retained mode**](https://en.wikipedia.org/wiki/Retained_mode) API design, which implies that the API is responsible for storing and managing the scene information and direct calls to any of the API functions does not directly cause actual rendering.
-5. The _main loop_ of the ray tracing algorithm, which should traverse the image pixels and shoot rays into the scene. At this stage, the main loop only traverses the image and samples colors from the `Background` object. (no rays are shot just yet)
-6. A set of functions that _parses_, i.e. reads in and validates a scene description file in XML with the format explained below, extracts the information necessary to set up the other classes, and sends these to the `API class` via its static methods.
+1. A class `Film` that stores pixels values as an **image color buffer** (a
+   matrix). This allows the ray tracer to save the color buffer to an image
+   file in PPM or PNG format. The class is named `Film` because it plays a role
+   similar to a film in an analog camera, or sensor in a modern digital camera.
+2. A class `Background` that is responsible for returning a color each time the
+   primary ray misses any object in the scene (i.e. hits nothing). In this
+   project, this class will receive a _pixel coordinate_ $(i,j)$ (usually
+   normalized) and return the corresponding background color.
+3. A set of classes to handle the math operations on vectors and matrices. In
+   this case you might either implement your own library (`Vector3`, `Point3`,
+   `Mat3x3`, etc.) based on the one provided in [_"Ray Tracing in One
+   Weekend"_](https://github.com/petershirley/raytracinginoneweekend/releases/),
+   or adopt other math libraries such as [_OpenGL
+   Mathematics_](https://glm.g-truc.net/0.9.9/index.html), or
+   [_cyCodeBase_](http://www.cemyuksel.com/cyCodeBase/code.html).
+4. The `API class` which might be implemented as
+   a static class that will instantiate and keep track of all object that
+   we will need to run the ray tracer. In this project, for instance, this class
+   should hold an instance of `Background`, and `Film`, and provide a method
+   `render()` in which resides the main loop described next. The API suggested
+   here follows the [**retained
+   mode**](https://en.wikipedia.org/wiki/Retained_mode) API design, which implies
+   that the API is responsible for storing and managing the scene information and
+   direct calls to any of the API functions does not directly cause actual
+   rendering.
+5. The _main loop_ of the ray tracing algorithm, which should traverse the
+   image pixels and shoot rays into the scene. At this stage, the main loop
+   only traverses the image and samples colors from the `Background` object. (no
+   rays are shot just yet)
+6. A set of functions that _parses_, i.e. reads in and validates a scene
+   description file in XML with the format explained below, extracts the
+   information necessary to set up the other classes, and sends these to the
+   `API class` via its static methods.
 
 The suggested sequence of actions that happens inside the `main()` function is the following:
 
