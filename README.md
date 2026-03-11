@@ -16,7 +16,7 @@ color](https://en.wikipedia.org/wiki/RGB_color_model).
 
 <img src="./pics/viewraytri.png" width="350">
 
-Source: Chapter 4 of _"Fundamentals of Computer Graphics"_, 3rd ed., Shirley and Marschner).
+Source: Chapter 4 of _"Fundamentals of Computer Graphics"_, 3rd ed., Shirley and Marschner.
 
 <img src="./pics/Ray_trace_diagram.png" width="350">
 
