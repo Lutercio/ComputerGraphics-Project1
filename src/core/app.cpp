@@ -1,0 +1,210 @@
+#include <chrono>
+#include <functional>
+#include <map>
+#include <memory>
+#include <sstream>
+#include <stack>
+#include <string_view>
+
+#include <glm/trigonometric.hpp>
+#include <glm/ext/vector_float3.hpp>
+
+#include "../msg_system/error.hpp"
+
+#include "app.hpp"
+#include "background.hpp"
+#include "common.hpp"
+#include "film.hpp"
+#include "paramset.hpp"
+#include "parser.hpp"
+
+namespace gc {
+
+//=== App's static members declaration and initialization.
+App::AppState App::m_current_block_state = AppState::Uninitialized;
+RunningOptions App::m_current_run_options;
+std::unique_ptr<RenderOptions> App::m_render_options;
+
+/// Check whether the current state has been intialized.
+bool App::check_in_initialized_state(std::string_view func_name) {
+  if (m_current_block_state == AppState::Uninitialized) {
+    std::ostringstream oss;
+    oss << "App::init() must be called before " << func_name << ". Ignoring...";
+    ERROR(oss.str());
+    return false;
+  }
+  return true;
+}
+
+/// Check whether the current state corresponds to setup section.
+bool App::check_in_setup_block_state(std::string_view func_name) {
+  check_in_initialized_state(func_name);
+  if (m_current_block_state == AppState::WorldBlock) {
+    std::ostringstream oss;
+    oss << "Rendering setup cannot happen inside World Definition block; ";
+    oss << func_name << " not allowed. Ignoring...";
+    ERROR(oss.str());
+    return false;
+  }
+  return true;
+}
+
+/// Check whether the current state corresponds to the world section.
+bool App::check_in_world_block_state(std::string_view func_name) {
+  check_in_initialized_state(func_name);
+  if (m_current_block_state == AppState::SetupBlock) {
+    std::ostringstream oss;
+    oss << "Scene description must happen inside World Definition block; ";
+    oss << func_name << " not allowed. Ignoring...";
+    ERROR(oss.str());
+    return false;
+  }
+  return true;
+}
+
+//=== App's public methods implementation
+void App::init_engine(const RunningOptions& run_options) {
+  // Save running option sent from the main().
+  m_current_run_options = run_options;
+  // Check current machine state.
+  if (m_current_block_state != AppState::Uninitialized) {
+    ERROR("App::init_engine() has already been called! ");
+  }
+  // Set proper machine state
+  m_current_block_state = AppState::SetupBlock;
+  // Preprare render infrastructure for a new scene.
+  m_render_options = std::make_unique<RenderOptions>();
+  // Create a new initial GS
+  // m_current_gs = GraphicsState();
+  MESSAGE("[1] Rendering engine initiated.\n");
+}
+
+void App::run() {
+  // Try to load and parse the scene from a file.
+  MESSAGE("[2] Beginning scene file parsing...\n");
+  // Recall that the file name comes from the running option struct.
+  parse_scene_file(m_current_run_options.filename.c_str());
+}
+
+void App::world_begin(const ParamSet& ps) {
+  check_in_setup_block_state("App::world_begin()");
+  m_current_block_state = AppState::WorldBlock;  // correct machine state.
+  hard_engine_reset();
+}
+
+/// Erase temporary engine states so that we may render another scene with the same configuration.
+void App::hard_engine_reset() {
+  // Render options reset
+  // TODO: in the future.
+}
+
+void App::world_end(const ParamSet& ps) {
+  MESSAGE("====================================================================");
+  MESSAGE("   Parsing Phase has ended. Rendering process starts now...");
+  MESSAGE("====================================================================");
+
+  check_in_world_block_state("App::world_end()");
+
+  // ===============================================================
+  // 1) Create the integrator.
+  // 2) Create the scene (requires the list of objects and background)
+  // ===============================================================
+  // For now, we create the film here but in the future it will be
+  // instantiated somewhere else.
+  Film* film = make_film(m_render_options->actors["film"]);
+  if (film == nullptr) {
+    ERROR("App::setup_camera(): Unable to create film.");
+  }
+
+  // The scene has already been parsed and properly set up. It's time to render the scene.
+  // [1] Create the integrator.
+  // [2] Create the scene.
+  // [3] Run integrator if previous instantiations went ok
+  bool scene_and_integrator_ok{ true };  // THIS is a STUB.
+  if (scene_and_integrator_ok) {
+    MESSAGE("    Parsing scene successfuly done!\n");
+    MESSAGE("[2] Starting ray tracing progress.\n");
+    MESSAGE("    Ray tracing is usually a slow process, please be patient: \n");
+    //================================================================================
+    auto start = std::chrono::steady_clock::now();
+    // m_integrator->render(*m_scene);
+    render();
+    auto end = std::chrono::steady_clock::now();
+    //================================================================================
+    auto diff = end - start;  // Store the time difference between start and end
+    // Seconds
+    auto diff_sec = std::chrono::duration_cast<std::chrono::seconds>(diff);
+    MESSAGE("    Time elapsed: " + std::to_string(diff_sec.count()) + " seconds ("
+            + std::to_string(std::chrono::duration<double, std::milli>(diff).count()) + " ms) \n");
+  }
+  // [4] Basic clean up, preparing for new rendering, in case we have
+  // several scene setup + world in a single input scene file.
+  m_current_block_state = AppState::SetupBlock;  // correct machine state.
+}
+
+void App::film(const ParamSet& ps) {
+  if (not check_in_setup_block_state("App::film()")) {
+    return;
+  }
+  // Store the ps associated with camera for later retrieval.
+  m_render_options->actors["film"] = ps;
+  if (m_current_run_options.verbose) {
+    auto type = ps.retrieve<std::string>("type", "unknown");
+    std::cout << ">>> film type: " << std::quoted(type) << '\n';
+  }
+}
+
+void App::background(const ParamSet& ps) {
+  check_in_world_block_state("App::background");
+
+  auto type = ps.retrieve<std::string>("type", "unknown");
+  if (type == "unknown") {
+    ERROR("API::background(): Missing \"type\" specificaton for the background.");
+  }
+  Background* bkg{ nullptr };
+  if (type == "single_color" or type == "4_colors") {
+    bkg = create_color_background(type, ps);
+  } else {
+    WARNING(std::string{ "API::background(): unknown background type \"" } + type
+            + std::string{ "\" provided; assuming colored background." });
+    bkg = create_color_background(type, ps);
+  }
+  // Store current background objec.
+  m_render_options->background.reset(bkg);
+}
+
+void App::render() {
+  // Perform objects initialization here.
+  // -------------------------------------------------------------
+  // The Film object holds the memory for the image.
+  auto film_resolution
+    = m_render_options->film->get_resolution();  // Retrieve the image dimensions in pixels.
+  auto w = film_resolution.x;
+  auto h = film_resolution.y;
+  // -------------------------------------------------------------
+  // Traverse all pixels to shoot rays from.
+  for (int j = 0; j < h; j++) {
+    for (int i = 0; i < w; i++) {
+      // Not shooting rays just yet; so let us sample the background.
+      auto color = m_render_options->background->sampleUV(
+        float(i) / float(w), float(j) / float(h));  // get background color.
+      m_render_options->film->add_sample(
+        Point2{ i, j }, color);  // set image buffer at position (i,j), accordingly.
+    }
+  }
+  // send image color buffer to the output file.
+  m_render_options->film->write_image();
+}
+
+Film* App::make_film(const ParamSet& ps) {
+  Film* film{ nullptr };
+  auto film_type = ps.retrieve<std::string>("type");
+  if (film_type == "image") {
+    film = create_film(ps);
+  } else {
+    WARNING(std::string{ "Film \"" } + film_type + std::string{ "\" unknown." });
+  }
+  return film;
+}
+
+}  // namespace gc
