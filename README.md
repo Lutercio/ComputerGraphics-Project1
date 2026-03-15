@@ -13,6 +13,10 @@ The information to create these classes are stored in the `RenderOptions` struct
 When the parser finds the tag `world_end` it creates all the objects (film, camera, scene, integrator) and calls the `render()` method.
 This method corresponds to the "main loop" of the rendering process.
 
+<!-- <img src="./docs/ray_tracer_pipeline.png" width="650"> -->
+
+![Processing flow diagram](./docs/ray_tracer_pipeline.png)
+
 # To compile
 
 ```
