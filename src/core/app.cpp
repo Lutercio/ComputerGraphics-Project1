@@ -96,6 +96,7 @@ void App::world_begin(const ParamSet& ps) {
 void App::hard_engine_reset() {
   // Render options reset
   // TODO: in the future.
+  m_render_options.reset();
 }
 
 void App::world_end(const ParamSet& ps) {
