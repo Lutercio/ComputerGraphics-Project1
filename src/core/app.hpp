@@ -41,6 +41,48 @@ struct RenderOptions {
  */
 struct GraphicsState {
   // TODO
+
+  using MaterialLib = std::map<std::string, Material>;
+  Material* current_material; 
+  std::string current_material_name;
+  bool flip_normals;
+  std::shared_ptr<MaterialLib> material_lib;
+  
+  GraphicsState()
+      : current_material(nullptr)
+      , flip_normals(false)
+      , material_lib(std::make_shared<MaterialLib>()) {}
+
+  Material* get_current_material() const {
+      if (current_material_name.empty()) return nullptr;
+      auto it = material_lib->find(current_material_name);
+      return (it != material_lib->end()) ? &it->second : nullptr;
+  }    
+
+  bool set_current_material(const std::string& name) {
+      if (material_lib->find(name) == material_lib->end()) return false;
+      current_material_name = name;
+      return true;
+  }    
+  void define_material(const std::string& name, Material mat) {
+      ensure_material_lib_owned();
+      (*material_lib)[name] = std::move(mat);
+  }
+
+  bool set_current_material(const std::string& name) {
+      auto it = material_lib->find(name);
+      if (it == material_lib->end()) return false;
+      current_material = &it->second;
+      return true;
+  }
+
+
+  private:
+  
+  void ensure_material_lib_owned() {
+      if (material_lib.use_count() > 1)
+          material_lib = std::make_shared<MaterialLib>(*material_lib);
+  }
 };
 
 /*!
