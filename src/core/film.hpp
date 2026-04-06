@@ -2,6 +2,8 @@
 #define FILM_HPP
 
 #include <cstdint>
+#include <vector>
+#include <memory>
 
 #include "common.hpp"
 #include "geometry.hpp"
@@ -42,7 +44,7 @@ public:
 
   // TODO: This class is incomplete!
   /// Reference to the color buffer (image) object.
-  // std::unique_ptr<ColorBuffer> m_color_buffer_ptr;
+  std::unique_ptr<std::vector<Spectrum>> m_color_buffer_ptr;
 };
 
 /// Factory creation

@@ -59,7 +59,7 @@ Background* create_color_background(std::string_view type, const ParamSet& ps) {
     Color24 single_color{ ps.retrieve<Color24>("color", black) };
     return new BackgroundSingleColor(single_color);
   }
-  if (type == "4_colors") {
+  if (type == "4_colors" or type == "colors") {
     // List of color from the scene to be passed onto the constructor.
     std::array<Spectrum, 4> color_list;
     // The tag:

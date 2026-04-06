@@ -96,7 +96,7 @@ void App::world_begin(const ParamSet& ps) {
 void App::hard_engine_reset() {
   // Render options reset
   // TODO: in the future.
-  m_render_options.reset();
+  // m_render_options.reset();
 }
 
 void App::world_end(const ParamSet& ps) {
@@ -116,6 +116,7 @@ void App::world_end(const ParamSet& ps) {
   if (film == nullptr) {
     ERROR("App::setup_camera(): Unable to create film.");
   }
+  m_render_options->film.reset(film);
 
   // The scene has already been parsed and properly set up. It's time to render the scene.
   // [1] Create the integrator.
@@ -163,7 +164,7 @@ void App::background(const ParamSet& ps) {
     ERROR("API::background(): Missing \"type\" specificaton for the background.");
   }
   Background* bkg{ nullptr };
-  if (type == "single_color" or type == "4_colors") {
+  if (type == "single_color" or type == "4_colors" or type == "colors") {
     bkg = create_color_background(type, ps);
   } else {
     WARNING(std::string{ "API::background(): unknown background type \"" } + type
