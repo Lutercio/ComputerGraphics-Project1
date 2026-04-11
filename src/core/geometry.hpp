@@ -69,6 +69,26 @@ public:
 
   bool operator!=(const Point2<T>& p) const { return x != p.x or y != p.y; }
 
+  bool has_nans() const {
+    return std::isnan(x) || std::isnan(y);
+  }
+
+  Point2<T> operator+(const Point2<T>& p) const { return Point2<T>(x + p.x, y + p.y); }
+  Point2<T>& operator+=(const Point2<T>& p) {
+    x += p.x;
+    y += p.y;
+    return *this;
+  }
+  Point2<T>& operator-=(const Point2<T>& p) {
+    x -= p.x;
+    y -= p.y;   
+    return *this;
+  }
+  Point2<T> operator*(const T s) const { return Point2<T>(x * s, y * s); }
+  Point2<T> operator/(const T s) const { return Point2<T>(x / s, y / s); }
+  Vector2<T> operator-(const Point2<T>& p) const { 
+    return Vector2<T>(x - p.x, y - p.y); 
+  }
 };  // Point2
 
 template <typename T>
@@ -134,8 +154,42 @@ public:
 
   bool operator==(const Point3<T>& p) const { return x == p.x and y == p.y and z == p.z; }
   bool operator!=(const Point3<T>& p) const { return x != p.x || y != p.y || z != p.z; }
-};
 
+  Point3<T> operator+(const Point3<T>& p) const { return Point3<T>(x + p.x, y + p.y, z + p.z); }
+  Point3<T>& operator+=(const Point3<T>& p) {
+    x += p.x;
+    y += p.y;
+    z += p.z;
+    return *this;
+  }
+  Point3<T>& operator-=(const Point3<T>& p) {
+    x -= p.x;
+    y -= p.y;
+    z -= p.z;
+    return *this;
+  }
+  Point3<T> operator*(const T s) const { return Point3<T>(x * s, y * s, z * s); }
+  Point3<T> operator/(const T s) const { return Point3<T>(x / s, y / s, z / s); }
+  Point3<T> operator-() const { return Point3<T>(-x, -y, -z); }
+
+  // p + v = novo ponto
+  Point3<T> operator+(const Vector3<T>& v) const {
+      return Point3<T>(x + v.x, y + v.y, z + v.z);
+  }
+  // p - v = novo ponto
+  Point3<T> operator-(const Vector3<T>& v) const {
+      return Point3<T>(x - v.x, y - v.y, z - v.z);
+  }
+  
+  // p1 - p2 = vetor entre os pontos
+  Vector3<T> operator-(const Point3<T>& p) const {
+      return Vector3<T>(x - p.x, y - p.y, z - p.z);
+    }
+  
+  bool has_nans() const {
+    return std::isnan(x) || std::isnan(y) || std::isnan(z);
+  }
+};
 // Vector Declarations
 template <typename T>
 class Vector2 {
@@ -170,6 +224,20 @@ public:
       return x;
     }
     return y;
+  }
+
+  Vector2<T> operator/(const T s) const { return Vector2<T>(x / s, y / s); }
+  
+
+  T length_squared() const {
+    return x * x + y * y;
+  } 
+  T length() const {
+    return std::sqrt(length_squared());
+  }
+
+  bool has_nans() const {
+    return std::isnan(x) || std::isnan(y);
   }
 };
 
@@ -215,6 +283,52 @@ public:
     }
     return z;
   }
+
+  Vector3<T> operator+(const Vector3<T>& v) const {
+    return Vector3<T>(x + v.x, y + v.y, z + v.z);
+  }
+  
+  Vector3<T>& operator+=(const Vector3<T>& v) {
+    x += v.x;
+    y += v.y;
+    z += v.z;
+    return *this;
+  } 
+
+  
+  Vector3<T> operator-(const Vector3<T>& v) const {
+    return Vector3<T>(x - v.x, y - v.y, z - v.z);
+  }
+
+  Vector3<T>& operator-=(const Vector3<T>& v) {
+    x -= v.x;
+    y -= v.y;
+    z -= v.z;
+    return *this;
+  }
+
+  template <typename U> 
+  Vector3<T> operator*(const U s) const {
+    return Vector3<T>(x * s, y * s, z * s);
+  }
+  
+  template <typename U> 
+  Vector3<T> operator/(const U s) const {
+    return Vector3<T>(x / s, y / s, z / s);
+  }
+
+  Vector3<T> operator-() const {
+    return Vector3<T>(-x, -y, -z);
+  }
+
+  T length_squared() const {
+    return x * x + y * y + z * z;
+  }
+
+  T length() const {
+    return std::sqrt(length_squared());
+  }
+
 
   Vector3() = default;
 
@@ -299,6 +413,10 @@ public:
     return *this;
   }
 
+  Normal3<T> operator/(T s) const {
+    return Normal3<T>(x / s, y / s, z / s);
+  }
+
   explicit Normal3<T>(const Vector3<T>& v) : x{ v.x }, y{ v.y }, z{ v.z } {
     assert(not v.has_nans());
   }
@@ -327,6 +445,14 @@ public:
     }
     return z;
   }
+
+  T length_squared() const {
+    return x * x + y * y + z * z;
+  }
+  T length() const {
+    return std::sqrt(length_squared());
+  }
+
 };
 
 template <typename T>
