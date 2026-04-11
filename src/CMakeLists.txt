@@ -6,6 +6,8 @@ add_executable( ${APP_NAME}
    core/image_io.cpp
    core/main.cpp
    core/parser.cpp
+   core/ray.cpp    
+   core/sphere.cpp
    msg_system/error.cpp
    extras/pbar.cpp
 )

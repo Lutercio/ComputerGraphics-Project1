@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.31)
+cmake_minimum_required(VERSION 3.22)
 project (RT3 VERSION 1.0.0 LANGUAGES CXX )
 
 #=== CREATING COMPILING DATABASE ===#

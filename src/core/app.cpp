@@ -11,6 +11,7 @@
 
 #include "../msg_system/error.hpp"
 
+#include "sphere.hpp"
 #include "app.hpp"
 #include "background.hpp"
 #include "common.hpp"
@@ -118,6 +119,23 @@ void App::world_end(const ParamSet& ps) {
   }
   m_render_options->film.reset(film);
 
+  // Cria a câmera
+  auto lookat_ps = m_render_options->actors["lookat"];
+  auto camera_ps = m_render_options->actors["camera"];
+
+  auto look_from_v = lookat_ps.retrieve<std::vector<float>>("look_from", {});
+  auto look_at_v   = lookat_ps.retrieve<std::vector<float>>("look_at", {});
+  auto up_v        = lookat_ps.retrieve<std::vector<float>>("up", {});
+  auto sw          = camera_ps.retrieve<std::vector<float>>("screen_window", {});
+
+  Point3f look_from(look_from_v[0], look_from_v[1], look_from_v[2]);
+  Point3f look_at_pt(look_at_v[0], look_at_v[1], look_at_v[2]);
+  Vector3f up(up_v[0], up_v[1], up_v[2]);
+
+  m_render_options->camera = std::make_unique<OrthographicCamera>(
+      look_from, look_at_pt, up, sw[0], sw[1], sw[2], sw[3]
+  );
+
   // The scene has already been parsed and properly set up. It's time to render the scene.
   // [1] Create the integrator.
   // [2] Create the scene.
@@ -183,19 +201,34 @@ void App::render() {
     = m_render_options->film->get_resolution();  // Retrieve the image dimensions in pixels.
   auto w = film_resolution.x;
   auto h = film_resolution.y;
+
+  auto mat_ps = m_render_options->actors["material"];
+  auto mat_color = mat_ps.retrieve<std::vector<float>>("color", {1.f, 0.f, 0.f});
+  ColorXYZ mat{mat_color[0], mat_color[1], mat_color[2]};
+
   // -------------------------------------------------------------
   // Traverse all pixels to shoot rays from.
-  for (int j = 0; j < h; j++) {
-    for (int i = 0; i < w; i++) {
-      // Not shooting rays just yet; so let us sample the background.
-      auto color = m_render_options->background->sampleUV(
-        float(i) / float(w), float(j) / float(h));  // get background color.
-      m_render_options->film->add_sample(
-        Point2{ i, j }, color);  // set image buffer at position (i,j), accordingly.
+      for (int j = 0; j < h; j++) {
+        for (int i = 0; i < w; i++) {
+            // Generates a ray from the camera through the pixel (i, j).
+            Ray ray = m_render_options->camera->generate_ray(i, j, w, h);
+
+            // Background is default color
+            auto color = m_render_options->background->sampleUV(
+                float(i) / float(w), float(h - j - 1) / float(h - 1));
+
+            for (const auto& prim : m_render_options->primitives) {
+                if (prim->intersect_p(ray)) {
+                    // Flat shader pinta vermelho por enquanto
+                    color = mat;
+                    break;
+                }
+            }
+            m_render_options->film->add_sample(Point2{i, j}, color);
+        }
     }
-  }
-  // send image color buffer to the output file.
-  m_render_options->film->write_image();
+
+    m_render_options->film->write_image();
 }
 
 Film* App::make_film(const ParamSet& ps) {
@@ -207,6 +240,42 @@ Film* App::make_film(const ParamSet& ps) {
     WARNING(std::string{ "Film \"" } + film_type + std::string{ "\" unknown." });
   }
   return film;
+}
+
+void App::integrator(const ParamSet& ps) {
+    // TODO: criar integrador
+    m_render_options->actors["integrator"] = ps;
+}
+
+void App::aggregator(const ParamSet& ps) {
+    // TODO: criar agregador
+    m_render_options->actors["aggregator"] = ps;
+}
+
+void App::object(const ParamSet& ps) {
+    auto type = ps.retrieve<std::string>("type", "unknown");
+    if (type == "sphere") {
+        auto center_v = ps.retrieve<std::vector<float>>("center", {});
+        auto radius   = ps.retrieve<float>("radius", 1.f);
+        Point3f center(center_v[0], center_v[1], center_v[2]);
+        std::shared_ptr<Primitive> sphere = std::make_shared<Sphere>(center, radius);
+        m_render_options->primitives.push_back(std::static_pointer_cast<Primitive>(sphere));
+    }
+
+    MESSAGE("Object type: " + type);
+
+}
+
+void App::look_at(const ParamSet& ps) {
+    m_render_options->actors["lookat"] = ps;
+}
+
+void App::camera(const ParamSet& ps) {
+    m_render_options->actors["camera"] = ps;
+}
+
+void App::material(const ParamSet& ps) {
+    m_render_options->actors["material"] = ps;
 }
 
 }  // namespace gc

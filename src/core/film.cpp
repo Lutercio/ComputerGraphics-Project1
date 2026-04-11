@@ -126,7 +126,7 @@ Film* create_film(const ParamSet& ps) {
   std::cout << "================================================\n";
   std::cout << ">>> create_film() - film parameters are:\n";
   std::cout << "    - filename: " << std::quoted(filename) << "\n";
-  // std::cout << "    - crop window: " << crop_window << "\n";
+  std::cout << "    - crop window: " << crop_window << "\n";
   std::cout << "    - w_res: " << dimensions.x << "\n";
   std::cout << "    - h_res: " << dimensions.y << "\n";
   std::cout << "    - image type: " << ps.retrieve<std::string>("img_type", "png") << "\n";

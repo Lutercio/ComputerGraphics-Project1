@@ -173,6 +173,30 @@ std::unordered_map<std::string, std::vector<std::string>> tag_catalog{
     "world_end",
     { "" },  // no attributes
   },
+  {
+    "lookat",
+    { "look_from", "look_at", "up" },
+  },
+  {
+      "camera",
+      { "type", "screen_window", "fovy", "frame_aspectratio" },
+  },
+  {
+      "object",
+      { "type", "radius", "center" },
+  },
+  {
+      "integrator",
+      { "type" },
+  },
+  {
+      "aggregator",
+      { "type" },
+  },
+  {
+    "material",
+    { "type", "color" },
+  }
 };
 
 /// Maps the tag name to its corresponding API function.
@@ -181,6 +205,12 @@ std::unordered_map<std::string, std::function<void(const gc::ParamSet&)>> api_fu
   { "world_begin", gc::App::world_begin },
   { "world_end", gc::App::world_end },
   { "film", gc::App::film },
+  { "lookat", gc::App::look_at },
+  { "camera", gc::App::camera },
+  { "integrator", gc::App::integrator },
+  { "aggregator", gc::App::aggregator },
+  { "object", gc::App::object },
+  { "material", gc::App::material },
 };
 
 /// Maps convertion function to an attribute name.
@@ -188,7 +218,7 @@ std::unordered_map<std::string, ConverterFunction> converters{
   { "type", convert<std::string> },  // "type" must be a string.
   { "name", convert<std::string> },  // "name" must be a string.
   //
-  { "color", convert<gc::Color24, 3> },  // "color" is a Color24 with 3 fields.
+  { "color", convert<float> },  // "color" is a Color24 with 3 fields.
   { "flip", convert<bool> },
   // Background attributes.
   { "mapping", convert<std::string> },
@@ -204,6 +234,14 @@ std::unordered_map<std::string, ConverterFunction> converters{
   { "filename", convert<std::string> },
   { "img_type", convert<std::string> },
   { "gamma_corrected", convert<bool> },
+  // Camera attributes.
+  { "screen_window", convert<float> },
+  { "fovy", convert<float> },
+  { "radius", convert<float> },
+  { "look_from", convert<float> },
+  { "look_at", convert<float> },
+  { "up", convert<float> },
+  { "center", convert<float> },
 };
 
 /*!

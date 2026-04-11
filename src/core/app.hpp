@@ -8,6 +8,8 @@
 
 #include "common.hpp"
 #include "paramset.hpp"
+#include "camera.hpp"
+#include "primitive.hpp"
 
 // Type of map we want to use.
 #define Dictionary std::unordered_map
@@ -23,6 +25,8 @@ struct RenderOptions {
   // NOTE: The film object will be owned by Camera in the future
   /// Film object
   std::unique_ptr<Film> film;
+  std::unique_ptr<Camera> camera;
+  std::vector<std::shared_ptr<Primitive>> primitives;  
 };
 
 /*!
@@ -127,6 +131,9 @@ public:
   static void world_end(const ParamSet& ps);
   static void film(const ParamSet& ps);
   static Film* make_film(const ParamSet&);
+  static void integrator(const ParamSet& ps);
+  static void aggregator(const ParamSet& ps);
+  static void object(const ParamSet& ps);
 
   /// Stores the running options passed to the main().
   static RunningOptions m_current_run_options;
