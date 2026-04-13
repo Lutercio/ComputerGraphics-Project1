@@ -77,6 +77,7 @@ public:
     // Try to retrieve key/data item from the map.
     auto result = m_map.find(key);
     if (result == m_map.end()) {  // Not found!
+      std::cout << "Key " << key << " not found in ParamSet. Returning default value.\n";
       return default_value;
     }
     // Get key-value pair from iterator.

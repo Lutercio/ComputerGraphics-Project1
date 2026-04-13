@@ -126,15 +126,26 @@ void App::world_end(const ParamSet& ps) {
   auto look_from_v = lookat_ps.retrieve<std::vector<float>>("look_from", {});
   auto look_at_v   = lookat_ps.retrieve<std::vector<float>>("look_at", {});
   auto up_v        = lookat_ps.retrieve<std::vector<float>>("up", {});
-  auto sw          = camera_ps.retrieve<std::vector<float>>("screen_window", {});
 
   Point3f look_from(look_from_v[0], look_from_v[1], look_from_v[2]);
   Point3f look_at_pt(look_at_v[0], look_at_v[1], look_at_v[2]);
   Vector3f up(up_v[0], up_v[1], up_v[2]);
 
-  m_render_options->camera = std::make_unique<OrthographicCamera>(
-      look_from, look_at_pt, up, sw[0], sw[1], sw[2], sw[3]
-  );
+  auto camera_type = camera_ps.retrieve<std::string>("type", "orthographic");
+
+  if (camera_type == "orthographic") {
+      auto sw = camera_ps.retrieve<std::vector<float>>("screen_window", {});
+      m_render_options->camera = std::make_unique<OrthographicCamera>(
+          look_from, look_at_pt, up, sw[0], sw[1], sw[2], sw[3]
+      );
+  } else if (camera_type == "perspective") {
+      auto fovy = camera_ps.retrieve<float>("fovy", 60.f);
+      auto aspect = float(m_render_options->film->get_resolution().x) /
+                    float(m_render_options->film->get_resolution().y);
+      m_render_options->camera = std::make_unique<PerspectiveCamera>(
+          look_from, look_at_pt, up, fovy, aspect
+      );
+  }
 
   // The scene has already been parsed and properly set up. It's time to render the scene.
   // [1] Create the integrator.
@@ -205,7 +216,6 @@ void App::render() {
   auto mat_ps = m_render_options->actors["material"];
   auto mat_color = mat_ps.retrieve<std::vector<float>>("color", {1.f, 0.f, 0.f});
   ColorXYZ mat{mat_color[0], mat_color[1], mat_color[2]};
-
   // -------------------------------------------------------------
   // Traverse all pixels to shoot rays from.
       for (int j = 0; j < h; j++) {
@@ -219,7 +229,6 @@ void App::render() {
 
             for (const auto& prim : m_render_options->primitives) {
                 if (prim->intersect_p(ray)) {
-                    // Flat shader pinta vermelho por enquanto
                     color = mat;
                     break;
                 }
