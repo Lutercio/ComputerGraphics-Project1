@@ -7,8 +7,8 @@ namespace gc {
 
 class Sphere : public Primitive {
 public:
-    Sphere(const Point3f& center, real_type radius)
-        : center{center}, radius{radius} {}
+    Sphere(const Point3f& center, real_type radius, std::shared_ptr<Material> mat = nullptr)
+        : Primitive{std::move(mat)}, center{center}, radius{radius} {}
 
     bool intersect(const Ray& r, Surfel* sf) const override;
     bool intersect_p(const Ray& r) const override;

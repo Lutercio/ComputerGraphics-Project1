@@ -141,6 +141,8 @@ public:
   static std::unique_ptr<RenderOptions> m_render_options;
   /// Current API state
   static AppState m_current_block_state;
+  /// Current graphics state (active material, etc.)
+  static GraphicsState m_graphics_state;
 };
 }  // namespace gc
 #endif  // APP_HPP

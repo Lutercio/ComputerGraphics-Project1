@@ -16,6 +16,8 @@
 #include "background.hpp"
 #include "common.hpp"
 #include "film.hpp"
+#include "integrator.hpp"
+#include "material.hpp"
 #include "paramset.hpp"
 #include "parser.hpp"
 
@@ -25,6 +27,7 @@ namespace gc {
 App::AppState App::m_current_block_state = AppState::Uninitialized;
 RunningOptions App::m_current_run_options;
 std::unique_ptr<RenderOptions> App::m_render_options;
+GraphicsState App::m_graphics_state;
 
 /// Check whether the current state has been intialized.
 bool App::check_in_initialized_state(std::string_view func_name) {
@@ -205,39 +208,22 @@ void App::background(const ParamSet& ps) {
 }
 
 void App::render() {
-  // Perform objects initialization here.
-  // -------------------------------------------------------------
-  // The Film object holds the memory for the image.
-  auto film_resolution
-    = m_render_options->film->get_resolution();  // Retrieve the image dimensions in pixels.
-  auto w = film_resolution.x;
-  auto h = film_resolution.y;
+    Scene scene(
+        m_render_options->camera.get(),
+        m_render_options->background.get(),
+        m_render_options->film.get(),
+        m_render_options->primitives
+    );
 
-  auto mat_ps = m_render_options->actors["material"];
-  auto mat_color = mat_ps.retrieve<std::vector<float>>("color", {1.f, 0.f, 0.f});
-  ColorXYZ mat{mat_color[0], mat_color[1], mat_color[2]};
-  // -------------------------------------------------------------
-  // Traverse all pixels to shoot rays from.
-      for (int j = 0; j < h; j++) {
-        for (int i = 0; i < w; i++) {
-            // Generates a ray from the camera through the pixel (i, j).
-            Ray ray = m_render_options->camera->generate_ray(i, j, w, h);
+    auto int_ps   = m_render_options->actors["integrator"];
+    auto int_type = int_ps.retrieve<std::string>("type", "flat");
 
-            // Background is default color
-            auto color = m_render_options->background->sampleUV(
-                float(i) / float(w), float(h - j - 1) / float(h - 1));
+    std::unique_ptr<Integrator> integrator;
+    if (int_type == "flat")
+        integrator = std::make_unique<FlatIntegrator>();
 
-            for (const auto& prim : m_render_options->primitives) {
-                if (prim->intersect_p(ray)) {
-                    color = mat;
-                    break;
-                }
-            }
-            m_render_options->film->add_sample(Point2{i, j}, color);
-        }
-    }
-
-    m_render_options->film->write_image();
+    if (integrator)
+        integrator->render(scene);
 }
 
 Film* App::make_film(const ParamSet& ps) {
@@ -267,8 +253,8 @@ void App::object(const ParamSet& ps) {
         auto center_v = ps.retrieve<std::vector<float>>("center", {});
         auto radius   = ps.retrieve<float>("radius", 1.f);
         Point3f center(center_v[0], center_v[1], center_v[2]);
-        std::shared_ptr<Primitive> sphere = std::make_shared<Sphere>(center, radius);
-        m_render_options->primitives.push_back(std::static_pointer_cast<Primitive>(sphere));
+        auto sphere = std::make_shared<Sphere>(center, radius, m_graphics_state.current_material);
+        m_render_options->primitives.push_back(sphere);
     }
 
     MESSAGE("Object type: " + type);
@@ -284,7 +270,12 @@ void App::camera(const ParamSet& ps) {
 }
 
 void App::material(const ParamSet& ps) {
-    m_render_options->actors["material"] = ps;
+    auto type = ps.retrieve<std::string>("type", "flat");
+    if (type == "flat") {
+        auto cv = ps.retrieve<std::vector<float>>("color", {1.f, 0.f, 0.f});
+        m_graphics_state.current_material =
+            std::make_shared<FlatMaterial>(Spectrum{cv[0], cv[1], cv[2]});
+    }
 }
 
 }  // namespace gc
