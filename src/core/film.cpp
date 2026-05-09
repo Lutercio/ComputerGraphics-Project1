@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
 #include <iomanip>
 #include <sstream>
 
@@ -73,9 +74,19 @@ void Film::write_image() const {
 /// Chooses the filename based on the CLI and scene file info.
 std::string handles_filename(const ParamSet& ps) {
   if (!App::m_current_run_options.outfile.empty()) {
-    return App::m_current_run_options.outfile;
+    auto filename = App::m_current_run_options.outfile;
+    auto parent_path = std::filesystem::path(filename).parent_path();
+    if (not parent_path.empty()) {
+      std::filesystem::create_directories(parent_path);
+    }
+    return filename;
   }
-  return ps.retrieve<std::string>("filename", "unknown.png");
+  auto filename = ps.retrieve<std::string>("filename", "unknown.png");
+  auto parent_path = std::filesystem::path(filename).parent_path();
+  if (not parent_path.empty()) {
+    std::filesystem::create_directories(parent_path);
+  }
+  return filename;
 }
 
 // /// Process ParamSet, extracts, validates a valid crop window.

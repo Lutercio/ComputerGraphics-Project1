@@ -20,3 +20,6 @@ set( LIB_LODEPNG "lodepng" )
 add_subdirectory(lib_lodepng) # This will ask this lib to be build
 set ( APP_NAME "rt3")
 add_subdirectory(src)
+
+enable_testing()
+add_subdirectory(tests)
