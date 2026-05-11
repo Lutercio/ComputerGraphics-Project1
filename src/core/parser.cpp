@@ -183,11 +183,11 @@ std::unordered_map<std::string, std::vector<std::string>> tag_catalog{
   },
   {
       "object",
-      { "type", "radius", "center" },
+      { "type", "radius", "center", "material" },
   },
   {
       "integrator",
-      { "type" },
+      { "type", "zmin", "zmax", "near_color", "far_color" },
   },
   {
       "aggregator",
@@ -196,7 +196,23 @@ std::unordered_map<std::string, std::vector<std::string>> tag_catalog{
   {
     "material",
     { "type", "color" },
-  }
+  },
+  {
+    "make_named_material",
+    { "type", "name", "color" },
+  },
+  {
+    "named_material",
+    { "name" },
+  },
+  {
+    "include",
+    { "filename" },
+  },
+  {
+    "render_again",
+    { "" },
+  },
 };
 
 /// Maps the tag name to its corresponding API function.
@@ -211,12 +227,16 @@ std::unordered_map<std::string, std::function<void(const gc::ParamSet&)>> api_fu
   { "aggregator", gc::App::aggregator },
   { "object", gc::App::object },
   { "material", gc::App::material },
+  { "make_named_material", gc::App::make_named_material },
+  { "named_material", gc::App::named_material },
+  { "render_again", gc::App::render_again },
 };
 
 /// Maps convertion function to an attribute name.
 std::unordered_map<std::string, ConverterFunction> converters{
   { "type", convert<std::string> },  // "type" must be a string.
   { "name", convert<std::string> },  // "name" must be a string.
+  { "material", convert<std::string> },
   //
   { "color", convert<float> },  // "color" is a Color24 with 3 fields.
   { "flip", convert<bool> },
@@ -237,6 +257,10 @@ std::unordered_map<std::string, ConverterFunction> converters{
   // Camera attributes.
   { "screen_window", convert<float> },
   { "fovy", convert<float> },
+  { "zmin", convert<float> },
+  { "zmax", convert<float> },
+  { "near_color", convert<float> },
+  { "far_color", convert<float> },
   { "radius", convert<float> },
   { "look_from", convert<float> },
   { "look_at", convert<float> },
@@ -350,7 +374,10 @@ void parse_scene_file(const char* filename) {
       }
       // Parse the string version of this attribute into its expected value.
       // The result is stored inside the gc::ParamSet object, passed in as the last argument.
-      std::string attribute_value{ str_to_lower(attr->Value()) };
+      std::string attribute_value{ attr->Value() };
+      if (attribute_name != "filename") {
+        attribute_value = str_to_lower(attr->Value());
+      }
       parse_attribute(attribute_name, attribute_value, /*OUT value*/ &ps);
     }
     // ================================================================================
@@ -360,18 +387,24 @@ void parse_scene_file(const char* filename) {
     /// HACK: If the tag is `include` we call `parse_scene_file()` recursively.
     // ----------------------------------------------------------------------------
     if (tag_name == "include") {
-      auto filename = ps.retrieve<std::string>("filename", "");
-      if (filename.empty()) {
+      auto include_filename = ps.retrieve<std::string>("filename", "");
+      if (include_filename.empty()) {
         WARNING("Missing attribute \"filename\" in tag \"include\"");
         continue;
       }
-      if (not fs::exists(fs::path{ filename.c_str() })) {
+      fs::path include_path{ include_filename };
+      if (include_path.is_relative()) {
+        include_path = fs::path{ filename }.parent_path() / include_path;
+      }
+      include_path = include_path.lexically_normal();
+      if (not fs::exists(include_path)) {
         std::ostringstream oss;
-        oss << "Included file " << std::quoted(filename) << " does not exist.";
+        oss << "Included file " << std::quoted(include_path.string()) << " does not exist.";
         ERROR(oss.str());
       }
       // Recursive call to process subfile.
-      parse_scene_file(filename.c_str());
+      auto include_path_str = include_path.string();
+      parse_scene_file(include_path_str.c_str());
       continue;  // This tag doesn't have an API function associated with; get next tag.
     }
     // ============================================================================

@@ -5,6 +5,7 @@
 #include <sstream>
 #include <stack>
 #include <string_view>
+#include <vector>
 
 #include <glm/trigonometric.hpp>
 #include <glm/ext/vector_float3.hpp>
@@ -22,6 +23,85 @@
 #include "parser.hpp"
 
 namespace gc {
+
+namespace {
+
+ParamSet get_actor(const std::string& name) {
+  auto it = App::m_render_options->actors.find(name);
+  if (it != App::m_render_options->actors.end()) {
+    return it->second;
+  }
+  return {};
+}
+
+std::vector<float> retrieve_vector(const ParamSet& ps,
+                                   const std::string& key,
+                                   const std::vector<float>& fallback)
+{
+  auto values = ps.retrieve<std::vector<float>>(key, fallback);
+  return values.size() >= fallback.size() ? values : fallback;
+}
+
+std::shared_ptr<Material> make_material(const ParamSet& ps)
+{
+  auto type = ps.retrieve<std::string>("type", "flat");
+  if (type == "flat") {
+    auto color_values = ps.retrieve<std::vector<float>>("color", {1.F, 1.F, 1.F});
+    auto color = rgb_values_to_spectrum(color_values);
+    return std::make_shared<FlatMaterial>(color);
+  }
+
+  WARNING(std::string{"Unknown material type \""} + type + "\"; using flat white.");
+  return std::make_shared<FlatMaterial>(Spectrum{1, 1, 1});
+}
+
+bool prepare_render_resources()
+{
+  ParamSet film_ps = get_actor("film");
+  if (not film_ps.contains<std::string>("type")) {
+    film_ps.assign("type", std::string{"image"});
+  }
+
+  Film* film = App::make_film(film_ps);
+  if (film == nullptr) {
+    ERROR("App::prepare_render_resources(): Unable to create film.");
+    return false;
+  }
+  App::m_render_options->film.reset(film);
+
+  auto lookat_ps = get_actor("lookat");
+  auto camera_ps = get_actor("camera");
+
+  auto look_from_v = retrieve_vector(lookat_ps, "look_from", {0.F, 0.F, 0.F});
+  auto look_at_v = retrieve_vector(lookat_ps, "look_at", {0.F, 0.F, 1.F});
+  auto up_v = retrieve_vector(lookat_ps, "up", {0.F, 1.F, 0.F});
+
+  Point3f look_from(look_from_v[0], look_from_v[1], look_from_v[2]);
+  Point3f look_at_pt(look_at_v[0], look_at_v[1], look_at_v[2]);
+  Vector3f up(up_v[0], up_v[1], up_v[2]);
+
+  auto camera_type = camera_ps.retrieve<std::string>("type", "orthographic");
+
+  if (camera_type == "orthographic") {
+    auto sw = retrieve_vector(camera_ps, "screen_window", {-1.F, 1.F, -1.F, 1.F});
+    App::m_render_options->camera = std::make_unique<OrthographicCamera>(
+        look_from, look_at_pt, up, sw[0], sw[1], sw[2], sw[3]);
+  } else if (camera_type == "perspective") {
+    auto fovy = camera_ps.retrieve<float>("fovy", 60.F);
+    auto aspect = float(App::m_render_options->film->get_resolution().x)
+                  / float(App::m_render_options->film->get_resolution().y);
+    App::m_render_options->camera =
+        std::make_unique<PerspectiveCamera>(look_from, look_at_pt, up, fovy, aspect);
+  } else {
+    WARNING(std::string{"Unknown camera type \""} + camera_type + "\"; using orthographic.");
+    App::m_render_options->camera =
+        std::make_unique<OrthographicCamera>(look_from, look_at_pt, up, -1.F, 1.F, -1.F, 1.F);
+  }
+
+  return App::m_render_options->camera != nullptr;
+}
+
+}  // namespace
 
 //=== App's static members declaration and initialization.
 App::AppState App::m_current_block_state = AppState::Uninitialized;
@@ -91,16 +171,18 @@ void App::run() {
 }
 
 void App::world_begin(const ParamSet& ps) {
-  check_in_setup_block_state("App::world_begin()");
+  if (not check_in_setup_block_state("App::world_begin()")) {
+    return;
+  }
   m_current_block_state = AppState::WorldBlock;  // correct machine state.
   hard_engine_reset();
 }
 
 /// Erase temporary engine states so that we may render another scene with the same configuration.
 void App::hard_engine_reset() {
-  // Render options reset
-  // TODO: in the future.
-  // m_render_options.reset();
+  m_render_options->background.reset();
+  m_render_options->primitives.clear();
+  m_graphics_state = GraphicsState();
 }
 
 void App::world_end(const ParamSet& ps) {
@@ -108,53 +190,16 @@ void App::world_end(const ParamSet& ps) {
   MESSAGE("   Parsing Phase has ended. Rendering process starts now...");
   MESSAGE("====================================================================");
 
-  check_in_world_block_state("App::world_end()");
-
-  // ===============================================================
-  // 1) Create the integrator.
-  // 2) Create the scene (requires the list of objects and background)
-  // ===============================================================
-  // For now, we create the film here but in the future it will be
-  // instantiated somewhere else.
-  Film* film = make_film(m_render_options->actors["film"]);
-  if (film == nullptr) {
-    ERROR("App::setup_camera(): Unable to create film.");
+  if (not check_in_world_block_state("App::world_end()")) {
+    return;
   }
-  m_render_options->film.reset(film);
 
-  // Cria a câmera
-  auto lookat_ps = m_render_options->actors["lookat"];
-  auto camera_ps = m_render_options->actors["camera"];
-
-  auto look_from_v = lookat_ps.retrieve<std::vector<float>>("look_from", {});
-  auto look_at_v   = lookat_ps.retrieve<std::vector<float>>("look_at", {});
-  auto up_v        = lookat_ps.retrieve<std::vector<float>>("up", {});
-
-  Point3f look_from(look_from_v[0], look_from_v[1], look_from_v[2]);
-  Point3f look_at_pt(look_at_v[0], look_at_v[1], look_at_v[2]);
-  Vector3f up(up_v[0], up_v[1], up_v[2]);
-
-  auto camera_type = camera_ps.retrieve<std::string>("type", "orthographic");
-
-  if (camera_type == "orthographic") {
-      auto sw = camera_ps.retrieve<std::vector<float>>("screen_window", {});
-      m_render_options->camera = std::make_unique<OrthographicCamera>(
-          look_from, look_at_pt, up, sw[0], sw[1], sw[2], sw[3]
-      );
-  } else if (camera_type == "perspective") {
-      auto fovy = camera_ps.retrieve<float>("fovy", 60.f);
-      auto aspect = float(m_render_options->film->get_resolution().x) /
-                    float(m_render_options->film->get_resolution().y);
-      m_render_options->camera = std::make_unique<PerspectiveCamera>(
-          look_from, look_at_pt, up, fovy, aspect
-      );
-  }
+  bool scene_and_integrator_ok = prepare_render_resources();
 
   // The scene has already been parsed and properly set up. It's time to render the scene.
   // [1] Create the integrator.
   // [2] Create the scene.
   // [3] Run integrator if previous instantiations went ok
-  bool scene_and_integrator_ok{ true };  // THIS is a STUB.
   if (scene_and_integrator_ok) {
     MESSAGE("    Parsing scene successfuly done!\n");
     MESSAGE("[2] Starting ray tracing progress.\n");
@@ -177,7 +222,7 @@ void App::world_end(const ParamSet& ps) {
 }
 
 void App::film(const ParamSet& ps) {
-  if (not check_in_setup_block_state("App::film()")) {
+  if (not check_in_initialized_state("App::film()")) {
     return;
   }
   // Store the ps associated with camera for later retrieval.
@@ -189,7 +234,9 @@ void App::film(const ParamSet& ps) {
 }
 
 void App::background(const ParamSet& ps) {
-  check_in_world_block_state("App::background");
+  if (not check_in_world_block_state("App::background")) {
+    return;
+  }
 
   auto type = ps.retrieve<std::string>("type", "unknown");
   if (type == "unknown") {
@@ -208,27 +255,26 @@ void App::background(const ParamSet& ps) {
 }
 
 void App::render() {
-    Scene scene(
-        m_render_options->camera.get(),
-        m_render_options->background.get(),
-        m_render_options->film.get(),
-        m_render_options->primitives
-    );
+  if (m_render_options->background == nullptr) {
+    m_render_options->background = std::make_unique<BackgroundSingleColor>(Spectrum{0, 0, 0});
+  }
 
-    auto int_ps   = m_render_options->actors["integrator"];
-    auto int_type = int_ps.retrieve<std::string>("type", "flat");
+  Scene scene(m_render_options->camera.get(),
+              m_render_options->background.get(),
+              m_render_options->film.get(),
+              m_render_options->primitives);
 
-    std::unique_ptr<Integrator> integrator;
-    if (int_type == "flat")
-        integrator = std::make_unique<FlatIntegrator>();
+  auto int_ps = m_render_options->actors["integrator"];
+  std::unique_ptr<Integrator> integrator = create_integrator(int_ps);
 
-    if (integrator)
-        integrator->render(scene);
+  if (integrator) {
+    integrator->render(scene);
+  }
 }
 
 Film* App::make_film(const ParamSet& ps) {
   Film* film{ nullptr };
-  auto film_type = ps.retrieve<std::string>("type");
+  auto film_type = ps.retrieve<std::string>("type", "image");
   if (film_type == "image") {
     film = create_film(ps);
   } else {
@@ -238,44 +284,109 @@ Film* App::make_film(const ParamSet& ps) {
 }
 
 void App::integrator(const ParamSet& ps) {
-    // TODO: criar integrador
-    m_render_options->actors["integrator"] = ps;
+  if (not check_in_initialized_state("App::integrator()")) {
+    return;
+  }
+  m_render_options->actors["integrator"] = ps;
 }
 
 void App::aggregator(const ParamSet& ps) {
-    // TODO: criar agregador
-    m_render_options->actors["aggregator"] = ps;
+  if (not check_in_initialized_state("App::aggregator()")) {
+    return;
+  }
+  m_render_options->actors["aggregator"] = ps;
 }
 
 void App::object(const ParamSet& ps) {
-    auto type = ps.retrieve<std::string>("type", "unknown");
-    if (type == "sphere") {
-        auto center_v = ps.retrieve<std::vector<float>>("center", {});
-        auto radius   = ps.retrieve<float>("radius", 1.f);
-        Point3f center(center_v[0], center_v[1], center_v[2]);
-        auto sphere = std::make_shared<Sphere>(center, radius, m_graphics_state.current_material);
-        m_render_options->primitives.push_back(sphere);
+  if (not check_in_world_block_state("App::object()")) {
+    return;
+  }
+
+  auto type = ps.retrieve<std::string>("type", "unknown");
+  if (type == "sphere") {
+    auto center_v = retrieve_vector(ps, "center", {0.F, 0.F, 0.F});
+    auto radius = ps.retrieve<float>("radius", 1.F);
+    Point3f center(center_v[0], center_v[1], center_v[2]);
+
+    std::shared_ptr<Material> material = m_graphics_state.get_current_material();
+    if (ps.contains<std::string>("material")) {
+      auto material_name = ps.retrieve<std::string>("material");
+      auto named_material = m_graphics_state.find_material(material_name);
+      if (named_material != nullptr) {
+        material = named_material;
+      } else {
+        WARNING(std::string{"Material \""} + material_name
+                + "\" not found; using current material.");
+      }
     }
 
-    MESSAGE("Object type: " + type);
+    auto sphere = std::make_shared<Sphere>(center, radius, material);
+    m_render_options->primitives.push_back(sphere);
+  } else {
+    WARNING(std::string{"Object type \""} + type + "\" unknown. Ignoring...");
+  }
 
+  MESSAGE("Object type: " + type);
 }
 
 void App::look_at(const ParamSet& ps) {
-    m_render_options->actors["lookat"] = ps;
+  if (not check_in_initialized_state("App::look_at()")) {
+    return;
+  }
+  m_render_options->actors["lookat"] = ps;
 }
 
 void App::camera(const ParamSet& ps) {
-    m_render_options->actors["camera"] = ps;
+  if (not check_in_initialized_state("App::camera()")) {
+    return;
+  }
+  m_render_options->actors["camera"] = ps;
 }
 
 void App::material(const ParamSet& ps) {
-    auto type = ps.retrieve<std::string>("type", "flat");
-    if (type == "flat") {
-        auto cv = ps.retrieve<std::vector<float>>("color", {1.f, 0.f, 0.f});
-        m_graphics_state.current_material =
-            std::make_shared<FlatMaterial>(Spectrum{cv[0], cv[1], cv[2]});
-    }
+  if (not check_in_world_block_state("App::material()")) {
+    return;
+  }
+  m_graphics_state.set_current_material(make_material(ps));
+}
+
+void App::make_named_material(const ParamSet& ps) {
+  if (not check_in_world_block_state("App::make_named_material()")) {
+    return;
+  }
+
+  auto name = ps.retrieve<std::string>("name", "");
+  if (name.empty()) {
+    WARNING("Named material declaration missing name. Ignoring...");
+    return;
+  }
+
+  m_graphics_state.define_material(name, make_material(ps));
+}
+
+void App::named_material(const ParamSet& ps) {
+  if (not check_in_world_block_state("App::named_material()")) {
+    return;
+  }
+
+  auto name = ps.retrieve<std::string>("name", "");
+  if (name.empty() or not m_graphics_state.set_current_material(name)) {
+    WARNING(std::string{"Named material \""} + name + "\" not found. Keeping current material.");
+  }
+}
+
+void App::render_again(const ParamSet& ps) {
+  if (not check_in_setup_block_state("App::render_again()")) {
+    return;
+  }
+
+  MESSAGE("====================================================================");
+  MESSAGE("   Rendering scene again with the current setup...");
+  MESSAGE("====================================================================");
+
+  if (prepare_render_resources()) {
+    render();
+  }
 }
 
 }  // namespace gc

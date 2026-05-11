@@ -2,13 +2,17 @@
 #define APP_HPP
 
 #include <cstdint>
+#include <map>
 #include <memory>
-#include "background.hpp"
+#include <string>
 #include <unordered_map>
+#include <vector>
 
-#include "common.hpp"
-#include "paramset.hpp"
+#include "background.hpp"
 #include "camera.hpp"
+#include "common.hpp"
+#include "material.hpp"
+#include "paramset.hpp"
 #include "primitive.hpp"
 
 // Type of map we want to use.
@@ -26,7 +30,7 @@ struct RenderOptions {
   /// Film object
   std::unique_ptr<Film> film;
   std::unique_ptr<Camera> camera;
-  std::vector<std::shared_ptr<Primitive>> primitives;  
+  std::vector<std::shared_ptr<Primitive>> primitives;
 };
 
 /*!
@@ -44,43 +48,49 @@ struct RenderOptions {
  * --------------------------------------------------------------------------------
  */
 struct GraphicsState {
-  // TODO
-
   using MaterialLib = std::map<std::string, std::shared_ptr<Material>>;
-  std::shared_ptr<Material> current_material; 
+  std::shared_ptr<Material> current_material;
   std::string current_material_name;
   bool flip_normals;
   std::shared_ptr<MaterialLib> material_lib;
-  
+
   GraphicsState()
-      : current_material(nullptr)
+      : current_material(std::make_shared<FlatMaterial>(Spectrum{1, 1, 1}))
       , flip_normals(false)
       , material_lib(std::make_shared<MaterialLib>()) {}
 
-  std::shared_ptr<Material> get_current_material() const {
-      if (current_material_name.empty()) return nullptr;
-      auto it = material_lib->find(current_material_name);
-      return (it != material_lib->end()) ? it->second : nullptr;
-  }    
-  
+  std::shared_ptr<Material> get_current_material() const { return current_material; }
+
+  std::shared_ptr<Material> find_material(const std::string& name) const {
+    auto it = material_lib->find(name);
+    return (it != material_lib->end()) ? it->second : nullptr;
+  }
+
   void define_material(const std::string& name, std::shared_ptr<Material> mat) {
-      ensure_material_lib_owned();
-      (*material_lib)[name] = std::move(mat);
+    ensure_material_lib_owned();
+    (*material_lib)[name] = std::move(mat);
   }
 
   bool set_current_material(const std::string& name) {
-      auto it = material_lib->find(name);
-      if (it == material_lib->end()) return false;
-      current_material = it->second;
-      return true;
+    auto it = material_lib->find(name);
+    if (it == material_lib->end()) {
+      return false;
+    }
+    current_material = it->second;
+    current_material_name = name;
+    return true;
   }
 
+  void set_current_material(std::shared_ptr<Material> mat) {
+    current_material = std::move(mat);
+    current_material_name.clear();
+  }
 
-  private:
-  
+private:
   void ensure_material_lib_owned() {
-      if (material_lib.use_count() > 1)
-          material_lib = std::make_shared<MaterialLib>(*material_lib);
+    if (material_lib.use_count() > 1) {
+      material_lib = std::make_shared<MaterialLib>(*material_lib);
+    }
   }
 };
 
@@ -127,8 +137,11 @@ public:
   static void look_at(const ParamSet& ps);
   static void background(const ParamSet& ps);
   static void material(const ParamSet& ps);
+  static void make_named_material(const ParamSet& ps);
+  static void named_material(const ParamSet& ps);
   static void world_begin(const ParamSet& ps);
   static void world_end(const ParamSet& ps);
+  static void render_again(const ParamSet& ps);
   static void film(const ParamSet& ps);
   static Film* make_film(const ParamSet&);
   static void integrator(const ParamSet& ps);
