@@ -1,0 +1,23 @@
+<RT3>
+    <lookat look_from="0 0 -4" look_at="0 0 4" up="0 1 0" />
+    <camera type="perspective" fovy="45" />
+    <integrator type="blinn_phong" />
+    <film type="image" w_res="640" h_res="360" filename="renders/project5_blinn.png" img_type="png" />
+
+    <world_begin/>
+        <background type="single_color" color="0.02 0.025 0.035" />
+
+        <light_source type="ambient" i="0.12 0.12 0.14" scale="1 1 1" />
+        <light_source type="directional" i="0.9 0.9 0.85" scale="0.45 0.45 0.45" from="-2 4 -3" to="0 0 4" />
+        <light_source type="point" i="1 0.85 0.65" scale="0.9 0.9 0.9" from="2.5 1.5 -1" attenuation="1 0.05 0.02" />
+
+        <make_named_material type="blinn" name="gold" ambient="0.15 0.10 0.02" diffuse="1 0.65 0.05" specular="0.9 0.7 0.25" glossiness="128" />
+        <make_named_material type="blinn" name="matte_blue" ambient="0.03 0.04 0.08" diffuse="0.10 0.22 0.85" specular="0.08 0.08 0.10" glossiness="8" />
+
+        <named_material name="gold" />
+        <object type="sphere" radius="0.75" center="-0.85 0 4" />
+
+        <named_material name="matte_blue" />
+        <object type="sphere" radius="0.75" center="0.85 0 5.2" />
+    <world_end/>
+</RT3>

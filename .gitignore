@@ -47,3 +47,5 @@ local.mk
 
 # Generated from :help docs
 tags
+
+md/

@@ -2,8 +2,8 @@
 #include <cstdlib>
 #include <iostream>
 
-#include "camera.hpp"
-#include "sphere.hpp"
+#include "ray/camera.hpp"
+#include "scene/sphere.hpp"
 
 namespace {
 

@@ -1,16 +1,15 @@
 # =============[ Main App ]=============
 add_executable( ${APP_NAME}
-   core/app.cpp
-   core/background.cpp
-   core/film.cpp
-   core/image_io.cpp
-   core/integrator.cpp
-   core/main.cpp
-   core/parser.cpp
-   core/ray.cpp
-   core/sphere.cpp
-   msg_system/error.cpp
-   extras/pbar.cpp
+   diagnostics/error.cpp
+   input/parser.cpp
+   output/film.cpp
+   output/image_io.cpp
+   runtime/app.cpp
+   runtime/main.cpp
+   scene/background.cpp
+   scene/sphere.cpp
+   shading/integrator.cpp
+   shading/light.cpp
 )
 # ------------------------------------------------------------
 
@@ -29,16 +28,8 @@ target_include_directories( ${APP_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/lib_tinyxml2
 target_include_directories( ${APP_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/lib_lodepng)
 # Math library
 target_include_directories( ${APP_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/lib_cybase)
-# Core folder
-target_include_directories( ${APP_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/core)
-# Camera folder
-# target_include_directories( ${APP_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/camera)
-# Integrator folder
-# target_include_directories( ${APP_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/integrators)
-# msg system foldedr
-# target_include_directories( ${APP_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/msg_system)
-# # External headers
-# target_include_directories( ${APP_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/ext)
+# Project source root
+target_include_directories( ${APP_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src)
 # ------------------------------------------------------------
 
 # =============[ Libs ]=================

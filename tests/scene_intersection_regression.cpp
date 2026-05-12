@@ -3,9 +3,9 @@
 #include <memory>
 #include <vector>
 
-#include "material.hpp"
-#include "scene.hpp"
-#include "sphere.hpp"
+#include "shading/material.hpp"
+#include "scene/scene.hpp"
+#include "scene/sphere.hpp"
 
 namespace {
 
