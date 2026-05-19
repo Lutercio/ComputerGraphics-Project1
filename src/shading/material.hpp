@@ -46,23 +46,27 @@ public:
   BlinnPhongMaterial(const Spectrum& ambient,
                      const Spectrum& diffuse,
                      const Spectrum& specular,
-                     real_type glossiness)
+                     real_type glossiness,
+                     const Spectrum& mirror = Spectrum{0, 0, 0})
       : m_ambient{ ambient }
       , m_diffuse{ diffuse }
       , m_specular{ specular }
-      , m_glossiness{ std::max(0.F, glossiness) } {}
+      , m_glossiness{ std::max(0.F, glossiness) }
+      , m_mirror{ mirror } {}
 
   [[nodiscard]] Spectrum get_color() const override { return m_diffuse; }
   [[nodiscard]] Spectrum ka() const { return m_ambient; }
   [[nodiscard]] Spectrum kd() const { return m_diffuse; }
   [[nodiscard]] Spectrum ks() const { return m_specular; }
   [[nodiscard]] real_type glossiness() const { return m_glossiness; }
+  [[nodiscard]] Spectrum km() const { return m_mirror; }
 
 private:
   Spectrum m_ambient;
   Spectrum m_diffuse;
   Spectrum m_specular;
   real_type m_glossiness;
+  Spectrum m_mirror;
 };
 
 }  // namespace gc

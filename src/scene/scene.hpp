@@ -69,6 +69,28 @@ struct Scene {
     }
     return false;
   }
+
+  [[nodiscard]] bool world_bounds(Bounds3f* bounds) const {
+    bool found_bounds = false;
+    Bounds3f combined;
+
+    for (const auto& primitive : primitives) {
+      Bounds3f primitive_bounds;
+      if (primitive != nullptr and primitive->world_bounds(&primitive_bounds)) {
+        if (found_bounds) {
+          combined.expand(primitive_bounds);
+        } else {
+          combined = primitive_bounds;
+          found_bounds = true;
+        }
+      }
+    }
+
+    if (found_bounds and bounds != nullptr) {
+      *bounds = combined;
+    }
+    return found_bounds;
+  }
 };
 
 }  // namespace gc

@@ -51,7 +51,13 @@ Spectrum optional_color(const ParamSet& ps, const std::string& key, const Spectr
 
 }  // namespace
 
-void SamplerIntegrator::preprocess(const Scene& scene) {}
+void SamplerIntegrator::preprocess(const Scene& scene) {
+  for (const auto& light : scene.lights) {
+    if (light != nullptr) {
+      light->preprocess(scene);
+    }
+  }
+}
 
 void SamplerIntegrator::render(const Scene& scene) {
   preprocess(scene);
@@ -158,7 +164,16 @@ std::optional<Spectrum> NormalMapIntegrator::Li(const Ray& ray, const Scene& sce
   return Spectrum{ (n.x + 1.F) * 0.5F, (n.y + 1.F) * 0.5F, (n.z + 1.F) * 0.5F };
 }
 
+BlinnPhongIntegrator::BlinnPhongIntegrator(int max_depth)
+    : m_max_depth{ std::max(0, max_depth) } {}
+
 std::optional<Spectrum> BlinnPhongIntegrator::Li(const Ray& ray, const Scene& scene) const {
+  return Li(ray, scene, 0);
+}
+
+std::optional<Spectrum> BlinnPhongIntegrator::Li(const Ray& ray,
+                                                 const Scene& scene,
+                                                 int depth) const {
   Surfel isect;
   if (not scene.intersect(ray, &isect)) {
     return {};
@@ -172,6 +187,7 @@ std::optional<Spectrum> BlinnPhongIntegrator::Li(const Ray& ray, const Scene& sc
   Spectrum ka{ 1, 1, 1 };
   Spectrum kd{ 1, 1, 1 };
   Spectrum ks{ 0, 0, 0 };
+  Spectrum km{ 0, 0, 0 };
   real_type glossiness = 1.F;
 
   const Material* material = isect.primitive != nullptr ? isect.primitive->get_material() : nullptr;
@@ -179,6 +195,7 @@ std::optional<Spectrum> BlinnPhongIntegrator::Li(const Ray& ray, const Scene& sc
     ka = blinn_material->ka();
     kd = blinn_material->kd();
     ks = blinn_material->ks();
+    km = blinn_material->km();
     glossiness = blinn_material->glossiness();
   } else if (material != nullptr) {
     ka = material->get_color();
@@ -199,11 +216,20 @@ std::optional<Spectrum> BlinnPhongIntegrator::Li(const Ray& ray, const Scene& sc
     }
 
     Vector3f wi;
-    const Spectrum intensity = light->sample_li(isect, &wi);
+    real_type max_t = INFINITY;
+    const Spectrum intensity = light->sample_li(isect, &wi, &max_t);
     wi = normalize_or(wi, Vector3f{ 0, 0, 0 });
+    if (max_t <= shadow_epsilon or max_component(intensity) <= 0.F) {
+      continue;
+    }
 
     const real_type n_dot_l = std::max(0.F, dot(normal, wi));
     if (n_dot_l <= 0.F) {
+      continue;
+    }
+
+    const Ray shadow_ray{ isect.p + (wi * shadow_epsilon), wi, shadow_epsilon, max_t };
+    if (scene.intersect_p(shadow_ray)) {
       continue;
     }
 
@@ -212,6 +238,18 @@ std::optional<Spectrum> BlinnPhongIntegrator::Li(const Ray& ray, const Scene& sc
     const Spectrum diffuse = multiply_components(intensity, kd) * n_dot_l;
     const Spectrum specular = multiply_components(intensity, ks) * std::pow(n_dot_h, glossiness);
     radiance += diffuse + specular;
+  }
+
+  if (depth < m_max_depth and max_component(km) > 0.F) {
+    Vector3f reflection_direction = ray.direction() - (2.F * dot(ray.direction(), normal) * normal);
+    reflection_direction = normalize_or(reflection_direction, -ray.direction());
+    const Ray reflected_ray{ isect.p + (reflection_direction * shadow_epsilon),
+                             reflection_direction,
+                             shadow_epsilon };
+    auto reflected_radiance = Li(reflected_ray, scene, depth + 1);
+    if (reflected_radiance) {
+      radiance += multiply_components(km, *reflected_radiance);
+    }
   }
 
   return clamp_spectrum(radiance);
@@ -234,7 +272,13 @@ std::unique_ptr<Integrator> create_integrator(const ParamSet& ps) {
     return std::make_unique<NormalMapIntegrator>();
   }
   if (type == "blinn" or type == "blinn_phong" or type == "blinnphong") {
-    return std::make_unique<BlinnPhongIntegrator>();
+    int max_depth = 0;
+    if (ps.contains<real_type>("depth")) {
+      max_depth = static_cast<int>(std::max(0.F, ps.retrieve<real_type>("depth", 0.F)));
+    } else if (ps.contains<real_type>("max_depth")) {
+      max_depth = static_cast<int>(std::max(0.F, ps.retrieve<real_type>("max_depth", 0.F)));
+    }
+    return std::make_unique<BlinnPhongIntegrator>(max_depth);
   }
 
   std::ostringstream oss;

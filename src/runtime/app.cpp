@@ -12,6 +12,7 @@
 
 #include "diagnostics/error.hpp"
 
+#include "scene/plane.hpp"
 #include "scene/sphere.hpp"
 #include "runtime/app.hpp"
 #include "scene/background.hpp"
@@ -82,8 +83,9 @@ std::shared_ptr<Material> make_material(const ParamSet& ps)
     auto diffuse = retrieve_spectrum(ps, "diffuse", base_color);
     auto ambient = retrieve_spectrum(ps, "ambient", diffuse);
     auto specular = retrieve_spectrum(ps, "specular", Spectrum{ 0, 0, 0 });
+    auto mirror = retrieve_spectrum(ps, "mirror", Spectrum{ 0, 0, 0 });
     auto glossiness = ps.retrieve<float>("glossiness", 32.F);
-    return std::make_shared<BlinnPhongMaterial>(ambient, diffuse, specular, glossiness);
+    return std::make_shared<BlinnPhongMaterial>(ambient, diffuse, specular, glossiness, mirror);
   }
 
   WARNING(std::string{"Unknown material type \""} + type + "\"; using flat white.");
@@ -102,12 +104,21 @@ std::shared_ptr<Light> make_light(const ParamSet& ps)
   if (type == "directional" or type == "direction") {
     auto from = retrieve_point3f(ps, "from", Point3f{ 0, 0, -1 });
     auto to = retrieve_point3f(ps, "to", Point3f{ 0, 0, 0 });
-    return std::make_shared<DirectionalLight>(intensity, from, to);
+    auto world_radius = ps.retrieve<float>("world_radius", 0.F);
+    return std::make_shared<DirectionalLight>(intensity, from, to, world_radius);
   }
   if (type == "point") {
     auto from = retrieve_point3f(ps, "from", Point3f{ 0, 0, 0 });
     auto attenuation = retrieve_vector3f(ps, "attenuation", Vector3f{ 1, 0, 0 });
     return std::make_shared<PointLight>(intensity, from, attenuation);
+  }
+  if (type == "spot" or type == "spotlight") {
+    auto from = retrieve_point3f(ps, "from", Point3f{ 0, 0, 0 });
+    auto to = retrieve_point3f(ps, "to", Point3f{ 0, -1, 0 });
+    auto attenuation = retrieve_vector3f(ps, "attenuation", Vector3f{ 1, 0, 0 });
+    auto cutoff = ps.retrieve<float>("cutoff", 30.F);
+    auto falloff = ps.retrieve<float>("falloff", cutoff);
+    return std::make_shared<SpotLight>(intensity, from, to, attenuation, cutoff, falloff);
   }
 
   WARNING(std::string{"Unknown light type \""} + type + "\". Ignoring...");
@@ -364,25 +375,30 @@ void App::object(const ParamSet& ps) {
   }
 
   auto type = ps.retrieve<std::string>("type", "unknown");
+  std::shared_ptr<Material> material = m_graphics_state.get_current_material();
+  if (ps.contains<std::string>("material")) {
+    auto material_name = ps.retrieve<std::string>("material");
+    auto named_material = m_graphics_state.find_material(material_name);
+    if (named_material != nullptr) {
+      material = named_material;
+    } else {
+      WARNING(std::string{"Material \""} + material_name
+              + "\" not found; using current material.");
+    }
+  }
+
   if (type == "sphere") {
     auto center_v = retrieve_vector(ps, "center", {0.F, 0.F, 0.F});
     auto radius = ps.retrieve<float>("radius", 1.F);
     Point3f center(center_v[0], center_v[1], center_v[2]);
 
-    std::shared_ptr<Material> material = m_graphics_state.get_current_material();
-    if (ps.contains<std::string>("material")) {
-      auto material_name = ps.retrieve<std::string>("material");
-      auto named_material = m_graphics_state.find_material(material_name);
-      if (named_material != nullptr) {
-        material = named_material;
-      } else {
-        WARNING(std::string{"Material \""} + material_name
-                + "\" not found; using current material.");
-      }
-    }
-
     auto sphere = std::make_shared<Sphere>(center, radius, material);
     m_render_options->primitives.push_back(sphere);
+  } else if (type == "plane") {
+    auto point = retrieve_point3f(ps, "point", Point3f{0, 0, 0});
+    auto normal = retrieve_vector3f(ps, "normal", Vector3f{0, 1, 0});
+    auto plane = std::make_shared<Plane>(point, normal, material);
+    m_render_options->primitives.push_back(plane);
   } else {
     WARNING(std::string{"Object type \""} + type + "\" unknown. Ignoring...");
   }

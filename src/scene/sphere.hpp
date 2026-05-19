@@ -12,6 +12,7 @@ public:
 
     bool intersect(const Ray& r, Surfel* sf) const override;
     bool intersect_p(const Ray& r) const override;
+    [[nodiscard]] bool world_bounds(Bounds3f* bounds) const override;
 
 private:
     Point3f center;

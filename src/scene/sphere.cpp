@@ -65,4 +65,14 @@ bool Sphere::intersect(const Ray& r, Surfel* sf) const {
     return true;
 }
 
+bool Sphere::world_bounds(Bounds3f* bounds) const {
+    if (bounds == nullptr) {
+        return false;
+    }
+
+    const Vector3f extent{radius, radius, radius};
+    *bounds = Bounds3f{center - extent, center + extent};
+    return true;
+}
+
 } // namespace gc

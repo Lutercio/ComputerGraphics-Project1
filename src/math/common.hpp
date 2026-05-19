@@ -34,6 +34,7 @@ class Ray;
 class Scene;
 class Shape;
 class Sphere;
+class SpotLight;
 struct Surfel;
 class Transform;
 class WhittedIntegrator;

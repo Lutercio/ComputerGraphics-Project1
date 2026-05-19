@@ -183,11 +183,11 @@ std::unordered_map<std::string, std::vector<std::string>> tag_catalog{
   },
   {
       "object",
-      { "type", "radius", "center", "material" },
+      { "type", "radius", "center", "material", "point", "normal" },
   },
   {
       "integrator",
-      { "type", "zmin", "zmax", "near_color", "far_color" },
+      { "type", "zmin", "zmax", "near_color", "far_color", "depth", "max_depth" },
   },
   {
       "aggregator",
@@ -195,11 +195,11 @@ std::unordered_map<std::string, std::vector<std::string>> tag_catalog{
   },
   {
     "material",
-    { "type", "color", "ambient", "diffuse", "specular", "glossiness" },
+    { "type", "color", "ambient", "diffuse", "specular", "glossiness", "mirror" },
   },
   {
     "make_named_material",
-    { "type", "name", "color", "ambient", "diffuse", "specular", "glossiness" },
+    { "type", "name", "color", "ambient", "diffuse", "specular", "glossiness", "mirror" },
   },
   {
     "named_material",
@@ -207,7 +207,7 @@ std::unordered_map<std::string, std::vector<std::string>> tag_catalog{
   },
   {
     "light_source",
-    { "type", "i", "scale", "from", "to", "attenuation" },
+    { "type", "i", "scale", "from", "to", "attenuation", "world_radius", "cutoff", "falloff" },
   },
   {
     "include",
@@ -248,6 +248,7 @@ std::unordered_map<std::string, ConverterFunction> converters{
   { "diffuse", convert<float> },
   { "specular", convert<float> },
   { "glossiness", convert<float> },
+  { "mirror", convert<float> },
   { "flip", convert<bool> },
   // Background attributes.
   { "mapping", convert<std::string> },
@@ -268,6 +269,8 @@ std::unordered_map<std::string, ConverterFunction> converters{
   { "fovy", convert<float> },
   { "zmin", convert<float> },
   { "zmax", convert<float> },
+  { "depth", convert<float> },
+  { "max_depth", convert<float> },
   { "near_color", convert<float> },
   { "far_color", convert<float> },
   { "radius", convert<float> },
@@ -275,12 +278,17 @@ std::unordered_map<std::string, ConverterFunction> converters{
   { "look_at", convert<float> },
   { "up", convert<float> },
   { "center", convert<float> },
+  { "point", convert<float> },
+  { "normal", convert<float> },
   // Light attributes.
   { "i", convert<float> },
   { "scale", convert<float> },
   { "from", convert<float> },
   { "to", convert<float> },
   { "attenuation", convert<float> },
+  { "world_radius", convert<float> },
+  { "cutoff", convert<float> },
+  { "falloff", convert<float> },
 };
 
 /*!

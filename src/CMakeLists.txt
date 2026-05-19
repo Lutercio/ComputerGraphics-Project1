@@ -7,6 +7,7 @@ add_executable( ${APP_NAME}
    runtime/app.cpp
    runtime/main.cpp
    scene/background.cpp
+   scene/plane.cpp
    scene/sphere.cpp
    shading/integrator.cpp
    shading/light.cpp

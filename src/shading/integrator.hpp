@@ -61,7 +61,15 @@ public:
 
 class BlinnPhongIntegrator : public SamplerIntegrator {
 public:
+  explicit BlinnPhongIntegrator(int max_depth = 0);
   [[nodiscard]] std::optional<Spectrum> Li(const Ray& ray, const Scene& scene) const override;
+
+private:
+  [[nodiscard]] std::optional<Spectrum> Li(const Ray& ray,
+                                           const Scene& scene,
+                                           int depth) const;
+
+  int m_max_depth{ 0 };
 };
 
 std::unique_ptr<Integrator> create_integrator(const ParamSet& ps);
