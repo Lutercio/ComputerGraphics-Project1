@@ -9,6 +9,7 @@ add_executable( ${APP_NAME}
    scene/background.cpp
    scene/plane.cpp
    scene/sphere.cpp
+   scene/triangle.cpp
    shading/integrator.cpp
    shading/light.cpp
 )

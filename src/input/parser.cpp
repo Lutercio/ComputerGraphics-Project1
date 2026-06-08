@@ -183,7 +183,10 @@ std::unordered_map<std::string, std::vector<std::string>> tag_catalog{
   },
   {
       "object",
-      { "type", "radius", "center", "material", "point", "normal" },
+      { "type", "radius", "center", "material", "point", "normal",
+        "filename", "ntriangles", "vertices", "vertex_indices", "normals",
+        "normal_indices", "uvs", "uv_indices",
+        "reverse_vertex_order", "compute_normals", "backface_cull" },
   },
   {
       "integrator",
@@ -207,7 +210,7 @@ std::unordered_map<std::string, std::vector<std::string>> tag_catalog{
   },
   {
     "light_source",
-    { "type", "i", "scale", "from", "to", "attenuation", "world_radius", "cutoff", "falloff" },
+    { "type", "i", "I", "L", "scale", "from", "to", "attenuation", "world_radius", "cutoff", "falloff" },
   },
   {
     "include",
@@ -252,10 +255,11 @@ std::unordered_map<std::string, ConverterFunction> converters{
   { "flip", convert<bool> },
   // Background attributes.
   { "mapping", convert<std::string> },
-  { "bl", convert<gc::Color24, 3> },
-  { "tl", convert<gc::Color24, 3> },
-  { "tr", convert<gc::Color24, 3> },
-  { "br", convert<gc::Color24, 3> },
+  // Accept both integer 0-255 (e.g. "153 204 255") and float 0-1 (e.g. "0.6 0.8 1") corner colors.
+  { "bl", convert<float> },
+  { "tl", convert<float> },
+  { "tr", convert<float> },
+  { "br", convert<float> },
   // Image attributes
   { "x_res", convert<int> },
   { "y_res", convert<int> },
@@ -280,8 +284,21 @@ std::unordered_map<std::string, ConverterFunction> converters{
   { "center", convert<float> },
   { "point", convert<float> },
   { "normal", convert<float> },
+  // Triangle mesh attributes
+  { "ntriangles", convert<int> },
+  { "vertices", convert<float> },
+  { "vertex_indices", convert<int> },
+  { "normals", convert<float> },
+  { "normal_indices", convert<int> },
+  { "uvs", convert<float> },
+  { "uv_indices", convert<int> },
+  { "reverse_vertex_order", convert<bool> },
+  { "compute_normals", convert<bool> },
+  { "backface_cull", convert<bool> },
   // Light attributes.
   { "i", convert<float> },
+  { "I", convert<float> },  // capital-I alias used in some scene files
+  { "L", convert<float> },  // L alias used in some scene files
   { "scale", convert<float> },
   { "from", convert<float> },
   { "to", convert<float> },

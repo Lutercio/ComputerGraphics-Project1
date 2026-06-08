@@ -14,6 +14,7 @@
 
 #include "scene/plane.hpp"
 #include "scene/sphere.hpp"
+#include "scene/triangle.hpp"
 #include "runtime/app.hpp"
 #include "scene/background.hpp"
 #include "math/common.hpp"
@@ -95,7 +96,15 @@ std::shared_ptr<Material> make_material(const ParamSet& ps)
 std::shared_ptr<Light> make_light(const ParamSet& ps)
 {
   auto type = ps.retrieve<std::string>("type", "point");
-  auto intensity = multiply_components(retrieve_spectrum(ps, "i", Spectrum{ 1, 1, 1 }),
+  // Accept "i", "I", and "L" as intensity attribute names (different scene file conventions).
+  Spectrum raw_intensity{ 1, 1, 1 };
+  if (ps.contains<std::vector<float>>("i") or ps.contains<float>("i"))
+    raw_intensity = retrieve_spectrum(ps, "i", raw_intensity);
+  else if (ps.contains<std::vector<float>>("I") or ps.contains<float>("I"))
+    raw_intensity = retrieve_spectrum(ps, "I", raw_intensity);
+  else if (ps.contains<std::vector<float>>("L") or ps.contains<float>("L"))
+    raw_intensity = retrieve_spectrum(ps, "L", raw_intensity);
+  auto intensity = multiply_components(raw_intensity,
                                        retrieve_spectrum(ps, "scale", Spectrum{ 1, 1, 1 }));
 
   if (type == "ambient") {
@@ -253,7 +262,11 @@ void App::hard_engine_reset() {
   m_render_options->background.reset();
   m_render_options->primitives.clear();
   m_render_options->lights.clear();
+  // Preserve the named-material library so materials declared before world_begin
+  // remain available inside the world block.
+  auto saved_lib = m_graphics_state.material_lib;
   m_graphics_state = GraphicsState();
+  m_graphics_state.material_lib = saved_lib;
 }
 
 void App::world_end(const ParamSet& ps) {
@@ -399,6 +412,65 @@ void App::object(const ParamSet& ps) {
     auto normal = retrieve_vector3f(ps, "normal", Vector3f{0, 1, 0});
     auto plane = std::make_shared<Plane>(point, normal, material);
     m_render_options->primitives.push_back(plane);
+  } else if (type == "trianglemesh") {
+    auto mesh = std::make_shared<TriangleMesh>();
+    mesh->backface_cull = ps.retrieve<bool>("backface_cull", false);
+
+    auto filename = ps.retrieve<std::string>("filename", "");
+    if (!filename.empty()) {
+      // Load from OBJ file
+      auto loaded = load_mesh_from_obj(filename);
+      if (!loaded) {
+        WARNING(std::string{"Failed to load OBJ file: "} + filename);
+        return;
+      }
+      loaded->backface_cull = mesh->backface_cull;
+      mesh = loaded;
+    } else {
+      // Load from scene file attributes
+      mesh->n_triangles = ps.retrieve<int>("ntriangles", 0);
+      if (mesh->n_triangles == 0) {
+        WARNING("trianglemesh: ntriangles is 0. Ignoring...");
+        return;
+      }
+
+      // Vertices (floats in groups of 3)
+      auto verts = ps.retrieve<std::vector<float>>("vertices", {});
+      for (size_t i = 0; i + 2 < verts.size(); i += 3)
+        mesh->points.emplace_back(verts[i], verts[i+1], verts[i+2]);
+
+      // Vertex indices
+      mesh->vertex_indices = ps.retrieve<std::vector<int>>("vertex_indices", {});
+
+      // Normals (floats in groups of 3)
+      auto norms = ps.retrieve<std::vector<float>>("normals", {});
+      for (size_t i = 0; i + 2 < norms.size(); i += 3)
+        mesh->normals.emplace_back(norms[i], norms[i+1], norms[i+2]);
+
+      // Normal indices
+      mesh->normal_indices = ps.retrieve<std::vector<int>>("normal_indices", {});
+
+      // UVs (floats in groups of 2)
+      auto uvs_raw = ps.retrieve<std::vector<float>>("uvs", {});
+      for (size_t i = 0; i + 1 < uvs_raw.size(); i += 2)
+        mesh->uvs.emplace_back(uvs_raw[i], uvs_raw[i+1]);
+
+      // UV indices
+      mesh->uv_indices = ps.retrieve<std::vector<int>>("uv_indices", {});
+
+      // Expand single normal to per-vertex if needed
+      bool compute_norms = ps.retrieve<bool>("compute_normals", false);
+      if (!compute_norms && mesh->normals.size() == 1 && !mesh->normal_indices.empty()) {
+        // Replicate the single normal for all vertices
+        int n_normal_idx = static_cast<int>(mesh->normal_indices.size());
+        for (int i = 0; i < n_normal_idx; ++i)
+          mesh->normal_indices[i] = 0; // all point to the single normal
+      }
+    }
+
+    auto triangles = create_triangle_mesh(mesh, material);
+    for (auto& tri : triangles)
+      m_render_options->primitives.push_back(tri);
   } else {
     WARNING(std::string{"Object type \""} + type + "\" unknown. Ignoring...");
   }
@@ -428,7 +500,7 @@ void App::material(const ParamSet& ps) {
 }
 
 void App::make_named_material(const ParamSet& ps) {
-  if (not check_in_world_block_state("App::make_named_material()")) {
+  if (not check_in_initialized_state("App::make_named_material()")) {
     return;
   }
 

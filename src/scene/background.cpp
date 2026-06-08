@@ -86,14 +86,13 @@ Background* create_color_background(std::string_view type, const ParamSet& ps) {
   if (type == "4_colors" or type == "colors") {
     // List of color from the scene to be passed onto the constructor.
     std::array<Spectrum, 4> color_list;
-    // The tag:
-    // <background type="4_colors"  bl="0 0 51" tl="0 255 51" tr="255 255 51" br="255 0 51" />
+    // Supports both integer 0-255 (e.g. bl="153 204 255") and
+    // float 0-1 (e.g. bl="0.6 0.8 1") corner colors.
     size_t idx{ 0 };
     for (const auto& label : corner_name) {
-      Color24 color_24{ ps.retrieve<Color24>(label, black) };
-      color_list[idx++] = Spectrum{ color_24.r / Background::max_channel_value,
-                                    color_24.g / Background::max_channel_value,
-                                    color_24.b / Background::max_channel_value };
+      // bl/tl/tr/br are now stored as vector<float> by the parser.
+      auto values = ps.retrieve<std::vector<real_type>>(label, { 0, 0, 0 });
+      color_list[idx++] = rgb_values_to_spectrum(values);
     }
     return new BackgroundMultiColor(color_list);
   }
