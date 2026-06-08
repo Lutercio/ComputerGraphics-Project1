@@ -184,7 +184,7 @@ std::unordered_map<std::string, std::vector<std::string>> tag_catalog{
   {
       "object",
       { "type", "radius", "center", "material", "point", "normal",
-        "filename", "ntriangles", "vertices", "vertex_indices", "normals",
+        "filename", "ntriangles", "vertices", "vertex_indices", "indices", "normals",
         "normal_indices", "uvs", "uv_indices",
         "reverse_vertex_order", "compute_normals", "backface_cull" },
   },
@@ -194,6 +194,10 @@ std::unordered_map<std::string, std::vector<std::string>> tag_catalog{
   },
   {
       "aggregator",
+      { "type", "split_method", "max_prims_per_node" },
+  },
+  {
+      "accelerator",
       { "type", "split_method", "max_prims_per_node" },
   },
   {
@@ -232,6 +236,7 @@ std::unordered_map<std::string, std::function<void(const gc::ParamSet&)>> api_fu
   { "camera", gc::App::camera },
   { "integrator", gc::App::integrator },
   { "aggregator", gc::App::aggregator },
+  { "accelerator", gc::App::aggregator },
   { "object", gc::App::object },
   { "material", gc::App::material },
   { "make_named_material", gc::App::make_named_material },
@@ -290,6 +295,7 @@ std::unordered_map<std::string, ConverterFunction> converters{
   { "ntriangles", convert<int> },
   { "vertices", convert<float> },
   { "vertex_indices", convert<int> },
+  { "indices", convert<int> },
   { "normals", convert<float> },
   { "normal_indices", convert<int> },
   { "uvs", convert<float> },

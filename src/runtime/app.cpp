@@ -455,8 +455,10 @@ void App::object(const ParamSet& ps) {
       for (size_t i = 0; i + 2 < verts.size(); i += 3)
         mesh->points.emplace_back(verts[i], verts[i+1], verts[i+2]);
 
-      // Vertex indices
+      // Vertex indices (accept both "vertex_indices" and "indices" as attribute names)
       mesh->vertex_indices = ps.retrieve<std::vector<int>>("vertex_indices", {});
+      if (mesh->vertex_indices.empty())
+        mesh->vertex_indices = ps.retrieve<std::vector<int>>("indices", {});
 
       // Normals (floats in groups of 3)
       auto norms = ps.retrieve<std::vector<float>>("normals", {});
@@ -482,6 +484,10 @@ void App::object(const ParamSet& ps) {
         for (int i = 0; i < n_normal_idx; ++i)
           mesh->normal_indices[i] = 0; // all point to the single normal
       }
+      // If normals provided but no normal_indices, assume per-vertex normals
+      // and mirror the vertex_indices (standard for inline XML meshes).
+      if (!mesh->normals.empty() && mesh->normal_indices.empty() && !mesh->vertex_indices.empty())
+        mesh->normal_indices = mesh->vertex_indices;
     }
 
     auto triangles = create_triangle_mesh(mesh, material);
