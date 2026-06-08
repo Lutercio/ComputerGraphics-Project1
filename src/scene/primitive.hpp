@@ -28,6 +28,19 @@ struct Bounds3f {
     }
 
     [[nodiscard]] Vector3f diagonal() const { return p_max - p_min; }
+
+    /// Returns the index of the longest axis (0=x, 1=y, 2=z).
+    [[nodiscard]] int max_extent() const {
+        Vector3f d = diagonal();
+        if (d.x > d.y && d.x > d.z) return 0;
+        if (d.y > d.z) return 1;
+        return 2;
+    }
+
+    /// Centroid of the bounding box.
+    [[nodiscard]] Point3f centroid() const {
+        return p_min + diagonal() * 0.5f;
+    }
 };
 
 class Primitive {

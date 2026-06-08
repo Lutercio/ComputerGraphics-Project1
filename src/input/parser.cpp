@@ -194,7 +194,7 @@ std::unordered_map<std::string, std::vector<std::string>> tag_catalog{
   },
   {
       "aggregator",
-      { "type" },
+      { "type", "split_method", "max_prims_per_node" },
   },
   {
     "material",
@@ -271,6 +271,8 @@ std::unordered_map<std::string, ConverterFunction> converters{
   // Camera attributes.
   { "screen_window", convert<float> },
   { "fovy", convert<float> },
+  { "split_method", convert<std::string> },
+  { "max_prims_per_node", convert<int> },
   { "zmin", convert<float> },
   { "zmax", convert<float> },
   { "depth", convert<float> },

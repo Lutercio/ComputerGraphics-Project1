@@ -7,7 +7,7 @@
     <film type="image" w_res="1920" h_res="1200" filename="renders/all_lights.png" img_type="png" gamma_corrected="false" />
 
     <!-- Objects storage -->
-    <aggregator type="list"/>
+    <aggregator type="bvh" max_prims_per_node="4"/>
 
     <!-- The Scene -->
     <world_begin/>

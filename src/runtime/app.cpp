@@ -12,6 +12,7 @@
 
 #include "diagnostics/error.hpp"
 
+#include "scene/bvh.hpp"
 #include "scene/plane.hpp"
 #include "scene/sphere.hpp"
 #include "scene/triangle.hpp"
@@ -343,10 +344,25 @@ void App::render() {
     m_render_options->background = std::make_unique<BackgroundSingleColor>(Spectrum{0, 0, 0});
   }
 
+  // If aggregator is requested, wrap all primitives into a single aggregate.
+  auto agg_ps = m_render_options->actors["aggregator"];
+  auto agg_type = agg_ps.retrieve<std::string>("type", "list");
+
+  // aggregate_wrapper is kept alive for the lifetime of scene below.
+  std::vector<std::shared_ptr<Primitive>> aggregate_wrapper;
+  const std::vector<std::shared_ptr<Primitive>>* prims_ptr = &m_render_options->primitives;
+
+  if (agg_type == "bvh" && !m_render_options->primitives.empty()) {
+    int max_per_leaf = agg_ps.retrieve<int>("max_prims_per_node", 1);
+    aggregate_wrapper = { std::make_shared<BVHAccel>(m_render_options->primitives, max_per_leaf) };
+    prims_ptr = &aggregate_wrapper;
+    MESSAGE("    Using BVH acceleration structure.\n");
+  }
+
   Scene scene(m_render_options->camera.get(),
               m_render_options->background.get(),
               m_render_options->film.get(),
-              m_render_options->primitives,
+              *prims_ptr,
               m_render_options->lights);
 
   auto int_ps = m_render_options->actors["integrator"];

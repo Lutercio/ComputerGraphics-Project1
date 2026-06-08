@@ -1,0 +1,11 @@
+<RT3>
+    <!--- The Camera -->
+    <lookat look_from="0 -90 30" look_at="0 0 0" up="0 1 0" />
+    <camera type="perspective" fovy="25" />
+    <integrator type="cel_shading"/>
+
+    <aggregator type="bvh" split_method="middle" max_prims_per_node="4" />
+
+    <film type="image" x_res="900" y_res="450" filename="teapot_cel_P.png" img_type="png" gamma_corrected="no" />
+    <include filename="../scenes/projects_references/proj_x_cel/teapot_scene/teapot_geometry.xml" />
+</RT3L>
