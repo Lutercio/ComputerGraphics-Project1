@@ -1,0 +1,53 @@
+<RT3>
+    <!-- Camera: dramatic 3/4 angle, slightly above eye level -->
+    <lookat look_from="220 160 250" look_at="0 66 0" up="0 1 0" />
+    <camera type="perspective" fovy="38" />
+    <integrator type="blinn_phong" depth="3" />
+    <accelerator type="bvh" split_method="middle" max_prims_per_node="4" />
+
+    <film type="image" x_res="1280" y_res="720" filename="khazix.png" img_type="png" gamma_corrected="no" />
+
+    <world_begin/>
+
+        <!-- Dark background, almost black with a hint of deep blue -->
+        <background type="colors"
+            bl="0.02 0.02 0.06"
+            tl="0.01 0.01 0.04"
+            tr="0.01 0.01 0.04"
+            br="0.02 0.02 0.06" />
+
+        <!-- Key light: cool blue-white from upper left -->
+        <light_source type="directional" L="0.7 0.85 1.0" scale="1 1 1" from="-150 300 200" to="0 66 0" />
+
+        <!-- Fill light: warm green rim from the right (void energy) -->
+        <light_source type="directional" L="0.2 0.8 0.3" scale="1 1 1" from="200 100 -100" to="0 66 0" />
+
+        <!-- Back rim light: subtle purple glow -->
+        <light_source type="directional" L="0.5 0.1 0.6" scale="1 1 1" from="-50 200 -300" to="0 66 0" />
+
+        <!-- Purple material for Kha'Zix -->
+        <make_named_material type="blinn" name="jade"
+            ambient="0.05 0.02 0.08"
+            diffuse="0.35 0.05 0.55"
+            specular="0.8 0.6 0.9"
+            mirror="0.15 0.1 0.2"
+            glossiness="128" />
+
+        <!-- Dark reflective floor -->
+        <make_named_material type="blinn" name="floor"
+            ambient="0.02 0.02 0.04"
+            diffuse="0.05 0.05 0.1"
+            specular="0.4 0.4 0.5"
+            mirror="0.3 0.3 0.35"
+            glossiness="64" />
+
+        <!-- Floor plane -->
+        <named_material name="floor"/>
+        <object type="plane" point="0 0 0" normal="0 1 0" />
+
+        <!-- Kha'Zix -->
+        <named_material name="jade"/>
+        <object type="trianglemesh" filename="scenes/kha/kha_zix_from_league_of_legends.obj" />
+
+    <world_end/>
+</RT3>

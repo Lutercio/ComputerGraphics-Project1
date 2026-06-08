@@ -14,7 +14,7 @@
 
         <!-- Objects -->
         <!-- <named_material name="gold"/> -->
-        <named_material name="gold"/>
+        <named_material name="jade"/>
         <object type="trianglemesh" filename="scenes/tpot/teapot.obj"/>
 
         <named_material name="indigo"/>
