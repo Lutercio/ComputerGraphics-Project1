@@ -8,7 +8,9 @@ namespace gc {
 class Camera {
 public:
     virtual ~Camera() = default;
-    virtual Ray generate_ray(int i, int j, int w, int h) const = 0;
+    // dx, dy: sub-pixel offset in [0,1)
+    virtual Ray generate_ray(int i, int j, int w, int h,
+                             real_type dx = 0.5F, real_type dy = 0.5F) const = 0;
 };
 
 class OrthographicCamera : public Camera {
@@ -28,9 +30,10 @@ public:
         v = normalize(cross(w, u));
     }
 
-    Ray generate_ray(int i, int j, int nx, int ny) const override {
-        real_type uu = left + (right - left) * (i + 0.5f) / nx;
-        real_type vv = bottom + (top - bottom) * (ny - j + 0.5f) / ny;
+    Ray generate_ray(int i, int j, int nx, int ny,
+                     real_type dx = 0.5F, real_type dy = 0.5F) const override {
+        real_type uu = left + (right - left) * (i + dx) / nx;
+        real_type vv = bottom + (top - bottom) * (ny - j + dy) / ny;
         Point3f origin(e.x + uu * u.x + vv * v.x,
                        e.y + uu * u.y + vv * v.y,
                        e.z + uu * u.z + vv * v.z);
@@ -61,9 +64,10 @@ public:
         right  =  half_w;
         left   = -half_w;}
         
-        Ray generate_ray(int i, int j, int nx, int ny) const override {
-            real_type uu = left + (right - left) * (i + 0.5f) / nx;
-            real_type vv = bottom + (top - bottom) * (ny - j - 0.5f) / ny;
+        Ray generate_ray(int i, int j, int nx, int ny,
+                         real_type dx = 0.5F, real_type dy = 0.5F) const override {
+            real_type uu = left + (right - left) * (i + dx) / nx;
+            real_type vv = bottom + (top - bottom) * (ny - j - dy) / ny;
             Vector3f dir = normalize(Vector3f(
                 uu * u.x + vv * v.x + w.x,
                 uu * u.y + vv * v.y + w.y,

@@ -22,8 +22,13 @@ public:
   [[nodiscard]] virtual std::optional<Spectrum> Li(const Ray& ray, const Scene& scene) const = 0;
   void render(const Scene& scene) override;
 
+  // n x n samples per pixel (1 = off)
+  void set_samples(int n) { m_samples = n > 1 ? n : 1; }
+
 protected:
   virtual void preprocess(const Scene& scene);
+
+  int m_samples{ 1 };
 };
 
 class RayCastIntegrator : public SamplerIntegrator {

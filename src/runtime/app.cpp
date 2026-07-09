@@ -1,4 +1,5 @@
 #include <chrono>
+#include <filesystem>
 #include <functional>
 #include <map>
 #include <memory>
@@ -23,6 +24,7 @@
 #include "shading/integrator.hpp"
 #include "shading/light.hpp"
 #include "shading/material.hpp"
+#include "shading/texture.hpp"
 #include "input/paramset.hpp"
 #include "input/parser.hpp"
 
@@ -73,6 +75,29 @@ Vector3f retrieve_vector3f(const ParamSet& ps, const std::string& key, const Vec
   return Vector3f{ values[0], values[1], values[2] };
 }
 
+/// Loads (and caches) an image texture. Tries the path as given first, then
+/// falls back to a path relative to the scene file's directory.
+std::shared_ptr<Texture> load_texture(const std::string& filename)
+{
+  namespace fs = std::filesystem;
+  static std::map<std::string, std::shared_ptr<Texture>> cache;
+
+  auto it = cache.find(filename);
+  if (it != cache.end()) {
+    return it->second;
+  }
+
+  auto texture = std::make_shared<ImageTexture>(filename);
+  if (not texture->valid()) {
+    const fs::path scene_dir = fs::path{ App::m_current_run_options.filename }.parent_path();
+    const fs::path candidate = scene_dir / filename;
+    texture = std::make_shared<ImageTexture>(candidate.string());
+  }
+
+  cache.emplace(filename, texture);
+  return texture;
+}
+
 std::shared_ptr<Material> make_material(const ParamSet& ps)
 {
   auto type = ps.retrieve<std::string>("type", "flat");
@@ -87,7 +112,24 @@ std::shared_ptr<Material> make_material(const ParamSet& ps)
     auto specular = retrieve_spectrum(ps, "specular", Spectrum{ 0, 0, 0 });
     auto mirror = retrieve_spectrum(ps, "mirror", Spectrum{ 0, 0, 0 });
     auto glossiness = ps.retrieve<float>("glossiness", 32.F);
-    return std::make_shared<BlinnPhongMaterial>(ambient, diffuse, specular, glossiness, mirror);
+    auto emission = retrieve_spectrum(ps, "emission", Spectrum{ 0, 0, 0 });
+    auto texture_file = ps.retrieve<std::string>("texture", "");
+    std::shared_ptr<Texture> diffuse_texture;
+    if (not texture_file.empty()) {
+      diffuse_texture = load_texture(texture_file);
+    }
+    return std::make_shared<BlinnPhongMaterial>(
+      ambient, diffuse, specular, glossiness, mirror, diffuse_texture, emission);
+  }
+
+  if (type == "glow") {
+    auto color = retrieve_spectrum(ps, "emission", retrieve_spectrum(ps, "color", Spectrum{ 1, 0, 0 }));
+    auto texture_file = ps.retrieve<std::string>("texture", "");
+    std::shared_ptr<Texture> glow_texture;
+    if (not texture_file.empty()) {
+      glow_texture = load_texture(texture_file);
+    }
+    return std::make_shared<GlowMaterial>(color, glow_texture);
   }
 
   WARNING(std::string{"Unknown material type \""} + type + "\"; using flat white.");

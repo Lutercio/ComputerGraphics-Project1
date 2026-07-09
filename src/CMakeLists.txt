@@ -4,6 +4,7 @@ add_executable( ${APP_NAME}
    input/parser.cpp
    output/film.cpp
    output/image_io.cpp
+   output/text.cpp
    runtime/app.cpp
    runtime/main.cpp
    scene/background.cpp
@@ -13,6 +14,7 @@ add_executable( ${APP_NAME}
    scene/triangle.cpp
    shading/integrator.cpp
    shading/light.cpp
+   shading/texture.cpp
 )
 # ------------------------------------------------------------
 
@@ -31,6 +33,8 @@ target_include_directories( ${APP_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/lib_tinyxml2
 target_include_directories( ${APP_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/lib_lodepng)
 # Math library
 target_include_directories( ${APP_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/lib_cybase)
+# stb_truetype (header-only font rasterizer)
+target_include_directories( ${APP_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/lib_stb)
 # Project source root
 target_include_directories( ${APP_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src)
 # ------------------------------------------------------------

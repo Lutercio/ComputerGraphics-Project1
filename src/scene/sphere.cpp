@@ -58,7 +58,13 @@ bool Sphere::intersect(const Ray& r, Surfel* sf) const {
         sf->n = n;
         sf->wo = -r.direction();
         sf->time = t;
-        sf->uv = Point2f(0, 0); // Simple UV mapping (could be improved)
+        // spherical UV mapping
+        const real_type theta = std::acos(clamp(n.y, real_type(-1), real_type(1)));
+        real_type phi = std::atan2(n.z, n.x);
+        if (phi < 0) {
+            phi += two_pi;
+        }
+        sf->uv = Point2f(phi * inv_2pi, theta * inv_pi);
         sf->primitive = this;
     }
 

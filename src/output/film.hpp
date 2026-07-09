@@ -45,6 +45,12 @@ public:
   // TODO: This class is incomplete!
   /// Reference to the color buffer (image) object.
   std::unique_ptr<std::vector<Spectrum>> m_color_buffer_ptr;
+
+  //=== Optional bottom-right caption drawn onto the film after rendering.
+  std::string m_caption;                    //!< Caption text ("" disables it).
+  std::string m_caption_font;               //!< Path to a .ttf font file.
+  real_type m_caption_size{ 28.F };         //!< Cap height in pixels.
+  Spectrum m_caption_color{ 1.F, 1.F, 1.F };//!< Text color (0-1 range).
 };
 
 /// Factory creation

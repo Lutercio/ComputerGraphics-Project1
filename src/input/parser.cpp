@@ -136,6 +136,15 @@ bool convert(const std::string& attr_name, const std::string& attr_content, gc::
   return true;
 }
 
+/// Stores the attribute value verbatim as a single std::string (no tokenizing).
+/// Needed for free text such as a caption, which may contain spaces.
+inline bool convert_raw_string(const std::string& attr_name,
+                               const std::string& attr_content,
+                               gc::ParamSet* ps) {
+  ps->assign<std::string>(attr_name, attr_content);
+  return true;
+}
+
 /// This is the list of all supported tags and their corresponding attributes/type.
 std::unordered_map<std::string, std::vector<std::string>> tag_catalog{
   {
@@ -163,6 +172,10 @@ std::unordered_map<std::string, std::vector<std::string>> tag_catalog{
       "h_res",
       "crop_window",
       "gamma_corrected",
+      "caption",
+      "caption_font",
+      "caption_size",
+      "caption_color",
     },
   },
   {
@@ -190,7 +203,7 @@ std::unordered_map<std::string, std::vector<std::string>> tag_catalog{
   },
   {
       "integrator",
-      { "type", "zmin", "zmax", "near_color", "far_color", "depth", "max_depth" },
+      { "type", "zmin", "zmax", "near_color", "far_color", "depth", "max_depth", "samples" },
   },
   {
       "aggregator",
@@ -202,11 +215,11 @@ std::unordered_map<std::string, std::vector<std::string>> tag_catalog{
   },
   {
     "material",
-    { "type", "color", "ambient", "diffuse", "specular", "glossiness", "mirror" },
+    { "type", "color", "ambient", "diffuse", "specular", "glossiness", "mirror", "texture", "emission" },
   },
   {
     "make_named_material",
-    { "type", "name", "color", "ambient", "diffuse", "specular", "glossiness", "mirror" },
+    { "type", "name", "color", "ambient", "diffuse", "specular", "glossiness", "mirror", "texture", "emission" },
   },
   {
     "named_material",
@@ -257,6 +270,8 @@ std::unordered_map<std::string, ConverterFunction> converters{
   { "specular", convert<float> },
   { "glossiness", convert<float> },
   { "mirror", convert<float> },
+  { "texture", convert<std::string> },  // path to a PNG diffuse texture.
+  { "emission", convert<float> },  // self-emitted radiance (RGB).
   { "flip", convert<bool> },
   // Background attributes.
   { "mapping", convert<std::string> },
@@ -273,6 +288,10 @@ std::unordered_map<std::string, ConverterFunction> converters{
   { "filename", convert<std::string> },
   { "img_type", convert<std::string> },
   { "gamma_corrected", convert<bool> },
+  { "caption", convert_raw_string },       // bottom-right caption text (may contain spaces).
+  { "caption_font", convert_raw_string },  // path to a .ttf font (may contain spaces).
+  { "caption_size", convert<float> },        // caption cap-height in pixels.
+  { "caption_color", convert<float> },       // caption RGB color.
   // Camera attributes.
   { "screen_window", convert<float> },
   { "fovy", convert<float> },
@@ -282,6 +301,7 @@ std::unordered_map<std::string, ConverterFunction> converters{
   { "zmax", convert<float> },
   { "depth", convert<float> },
   { "max_depth", convert<float> },
+  { "samples", convert<int> },
   { "near_color", convert<float> },
   { "far_color", convert<float> },
   { "radius", convert<float> },
@@ -423,7 +443,9 @@ void parse_scene_file(const char* filename) {
       // Parse the string version of this attribute into its expected value.
       // The result is stored inside the gc::ParamSet object, passed in as the last argument.
       std::string attribute_value{ attr->Value() };
-      if (attribute_name != "filename") {
+      // File paths and free text must keep their original casing.
+      if (attribute_name != "filename" and attribute_name != "texture"
+          and attribute_name != "caption" and attribute_name != "caption_font") {
         attribute_value = str_to_lower(attr->Value());
       }
       parse_attribute(attribute_name, attribute_value, /*OUT value*/ &ps);

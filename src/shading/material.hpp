@@ -2,9 +2,11 @@
 #define MATERIAL_HPP
 
 #include <algorithm>
+#include <memory>
 #include <vector>
 
 #include "math/geometry.hpp"
+#include "shading/texture.hpp"
 
 namespace gc {
 
@@ -47,19 +49,34 @@ public:
                      const Spectrum& diffuse,
                      const Spectrum& specular,
                      real_type glossiness,
-                     const Spectrum& mirror = Spectrum{0, 0, 0})
+                     const Spectrum& mirror = Spectrum{0, 0, 0},
+                     std::shared_ptr<Texture> diffuse_texture = nullptr,
+                     const Spectrum& emission = Spectrum{0, 0, 0})
       : m_ambient{ ambient }
       , m_diffuse{ diffuse }
       , m_specular{ specular }
       , m_glossiness{ std::max(0.F, glossiness) }
-      , m_mirror{ mirror } {}
+      , m_mirror{ mirror }
+      , m_diffuse_texture{ std::move(diffuse_texture) }
+      , m_emission{ emission } {}
 
   [[nodiscard]] Spectrum get_color() const override { return m_diffuse; }
   [[nodiscard]] Spectrum ka() const { return m_ambient; }
   [[nodiscard]] Spectrum kd() const { return m_diffuse; }
+
+  // Diffuse color, tinted by the texture when one is set.
+  [[nodiscard]] Spectrum kd(const Point2f& uv) const {
+    if (m_diffuse_texture == nullptr) {
+      return m_diffuse;
+    }
+    const Spectrum t = m_diffuse_texture->evaluate(uv);
+    return Spectrum{ t.r * m_diffuse.r, t.g * m_diffuse.g, t.b * m_diffuse.b };
+  }
+
   [[nodiscard]] Spectrum ks() const { return m_specular; }
   [[nodiscard]] real_type glossiness() const { return m_glossiness; }
   [[nodiscard]] Spectrum km() const { return m_mirror; }
+  [[nodiscard]] Spectrum le() const { return m_emission; }  // self-emitted radiance
 
 private:
   Spectrum m_ambient;
@@ -67,6 +84,30 @@ private:
   Spectrum m_specular;
   real_type m_glossiness;
   Spectrum m_mirror;
+  std::shared_ptr<Texture> m_diffuse_texture;
+  Spectrum m_emission;
+};
+
+// Additive, semi-transparent material: the integrator adds glow() on top of
+// whatever lies behind the surface. Used for the laser halo.
+class GlowMaterial : public Material {
+public:
+  explicit GlowMaterial(const Spectrum& color, std::shared_ptr<Texture> texture = nullptr)
+      : m_color{ color }, m_texture{ std::move(texture) } {}
+
+  [[nodiscard]] Spectrum get_color() const override { return m_color; }
+
+  [[nodiscard]] Spectrum glow(const Point2f& uv) const {
+    if (m_texture == nullptr) {
+      return m_color;
+    }
+    const Spectrum t = m_texture->evaluate(uv);
+    return Spectrum{ m_color.r * t.r, m_color.g * t.g, m_color.b * t.b };
+  }
+
+private:
+  Spectrum m_color;
+  std::shared_ptr<Texture> m_texture;
 };
 
 }  // namespace gc

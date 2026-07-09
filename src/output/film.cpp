@@ -11,6 +11,7 @@
 #include "output/film.hpp"
 #include "math/geometry.hpp"
 #include "output/image_io.hpp"
+#include "output/text.hpp"
 #include "input/paramset.hpp"
 #include <string_view>
 
@@ -38,6 +39,13 @@ void Film::add_sample(const Point2i& pixel_coord, const Spectrum& pixel_color) c
 
 /// Convert Spectrum image information to RGB, compute final pixel values, write image.
 void Film::write_image() const {
+  // Draw the caption before tone mapping.
+  if (not m_caption.empty()) {
+    draw_caption_bottom_right(*m_color_buffer_ptr, m_full_resolution.x, m_full_resolution.y,
+                              m_caption, m_caption_font, m_caption_size, m_caption_color,
+                              /*margin_x=*/24, /*margin_y=*/22, /*slant=*/0.18F);
+  }
+
   float max_val = 0.0f;
   for (const auto& color : *m_color_buffer_ptr) {
     max_val = std::max({max_val, color.x, color.y, color.z});
@@ -57,9 +65,9 @@ void Film::write_image() const {
       b = std::pow(b / 255.0f, 1.0f / 2.2f) * 255.0f;
     }
 
-    byte_buffer.push_back(static_cast<std::uint8_t>(r));
-    byte_buffer.push_back(static_cast<std::uint8_t>(g));
-    byte_buffer.push_back(static_cast<std::uint8_t>(b));
+    byte_buffer.push_back(static_cast<std::uint8_t>(r + 0.5f));
+    byte_buffer.push_back(static_cast<std::uint8_t>(g + 0.5f));
+    byte_buffer.push_back(static_cast<std::uint8_t>(b + 0.5f));
   }
 
   if (m_image_type == image_type_e::PNG) {
@@ -145,6 +153,23 @@ Film* create_film(const ParamSet& ps) {
   std::cout << "================================================\n";
 #endif
 
-  return new Film(dimensions, filename, type, apply_gamma_correction);
+  auto* film = new Film(dimensions, filename, type, apply_gamma_correction);
+
+  //==[6] Optional bottom-right caption (e.g. "See you, space cowboy").
+  film->m_caption = ps.retrieve<std::string>("caption", "");
+  if (not film->m_caption.empty()) {
+    film->m_caption_font =
+      ps.retrieve<std::string>("caption_font", "scenes/fonts/DejaVuSerif-Bold.ttf");
+    film->m_caption_size = ps.retrieve<float>("caption_size", 28.F);
+    if (ps.contains<std::vector<float>>("caption_color")) {
+      auto c = ps.retrieve<std::vector<float>>("caption_color", { 1.F, 1.F, 1.F });
+      if (c.size() >= 3) {
+        const float m = std::max({ c[0], c[1], c[2] }) > 1.F ? 255.F : 1.F;
+        film->m_caption_color = Spectrum{ c[0] / m, c[1] / m, c[2] / m };
+      }
+    }
+  }
+
+  return film;
 }
 }  // namespace gc

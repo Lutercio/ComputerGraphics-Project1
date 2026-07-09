@@ -66,16 +66,25 @@ void SamplerIntegrator::render(const Scene& scene) {
   int width = resolution.x;
   int height = resolution.y;
 
+  const int n = m_samples;
+  const real_type inv_samples = 1.F / real_type(n * n);
+
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
-      Ray ray = scene.camera->generate_ray(x, y, width, height);
-      auto radiance = Li(ray, scene);
+      const real_type u = width > 1 ? real_type(x) / real_type(width - 1) : 0.F;
+      const real_type v = height > 1 ? real_type(height - y - 1) / real_type(height - 1) : 0.F;
 
-      real_type u = width > 1 ? real_type(x) / real_type(width - 1) : 0.F;
-      real_type v = height > 1 ? real_type(height - y - 1) / real_type(height - 1) : 0.F;
-      Spectrum color = radiance.value_or(scene.background->sampleUV(u, v));
-
-      scene.film->add_sample(Point2i{ x, y }, color);
+      Spectrum color{ 0, 0, 0 };
+      for (int sy = 0; sy < n; ++sy) {
+        for (int sx = 0; sx < n; ++sx) {
+          const real_type dx = (real_type(sx) + 0.5F) / real_type(n);
+          const real_type dy = (real_type(sy) + 0.5F) / real_type(n);
+          Ray ray = scene.camera->generate_ray(x, y, width, height, dx, dy);
+          auto radiance = Li(ray, scene);
+          color += radiance.value_or(scene.background->sampleUV(u, v));
+        }
+      }
+      scene.film->add_sample(Point2i{ x, y }, color * inv_samples);
     }
   }
 
@@ -179,6 +188,22 @@ std::optional<Spectrum> BlinnPhongIntegrator::Li(const Ray& ray,
     return {};
   }
 
+  const Material* material = isect.primitive != nullptr ? isect.primitive->get_material() : nullptr;
+
+  // Additive glow: add glow color and keep tracing behind the hit.
+  if (const auto* glow_material = dynamic_cast<const GlowMaterial*>(material)) {
+    const Spectrum add = glow_material->glow(isect.uv);
+    Spectrum behind{ 0.012F, 0.014F, 0.028F };  // deep-space fallback on a miss
+    if (depth < 24) {
+      const Ray continuation{ isect.p + (ray.direction() * shadow_epsilon), ray.direction(),
+                              shadow_epsilon };
+      if (auto b = Li(continuation, scene, depth + 1)) {
+        behind = *b;
+      }
+    }
+    return clamp_spectrum(behind + add);
+  }
+
   Vector3f normal = normalize_or(isect.n, Vector3f{ 0, 0, 1 });
   if (dot(normal, ray.direction()) > 0.F) {
     return Spectrum{ 0, 0, 0 };
@@ -188,14 +213,15 @@ std::optional<Spectrum> BlinnPhongIntegrator::Li(const Ray& ray,
   Spectrum kd{ 1, 1, 1 };
   Spectrum ks{ 0, 0, 0 };
   Spectrum km{ 0, 0, 0 };
+  Spectrum le{ 0, 0, 0 };
   real_type glossiness = 1.F;
 
-  const Material* material = isect.primitive != nullptr ? isect.primitive->get_material() : nullptr;
   if (const auto* blinn_material = dynamic_cast<const BlinnPhongMaterial*>(material)) {
     ka = blinn_material->ka();
-    kd = blinn_material->kd();
+    kd = blinn_material->kd(isect.uv);
     ks = blinn_material->ks();
     km = blinn_material->km();
+    le = blinn_material->le();
     glossiness = blinn_material->glossiness();
   } else if (material != nullptr) {
     ka = material->get_color();
@@ -203,7 +229,7 @@ std::optional<Spectrum> BlinnPhongIntegrator::Li(const Ray& ray,
   }
 
   const Vector3f view = normalize_or(isect.wo, -ray.direction());
-  Spectrum radiance{ 0, 0, 0 };
+  Spectrum radiance = le;
 
   for (const auto& light : scene.lights) {
     if (light == nullptr) {
@@ -257,7 +283,9 @@ std::optional<Spectrum> BlinnPhongIntegrator::Li(const Ray& ray,
 
 std::unique_ptr<Integrator> create_integrator(const ParamSet& ps) {
   auto type = ps.retrieve<std::string>("type", "flat");
+  const int samples = std::max(1, ps.retrieve<int>("samples", 1));
 
+  auto make = [&]() -> std::unique_ptr<Integrator> {
   if (type == "flat" or type == "raycast" or type == "ray_cast") {
     return std::make_unique<RayCastIntegrator>();
   }
@@ -285,6 +313,13 @@ std::unique_ptr<Integrator> create_integrator(const ParamSet& ps) {
   oss << "Integrator type \"" << type << "\" unknown; using flat integrator.";
   WARNING(oss.str());
   return std::make_unique<RayCastIntegrator>();
+  };
+
+  auto integrator = make();
+  if (auto* sampler = dynamic_cast<SamplerIntegrator*>(integrator.get())) {
+    sampler->set_samples(samples);
+  }
+  return integrator;
 }
 
 }  // namespace gc
